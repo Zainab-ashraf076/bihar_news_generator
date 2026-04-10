@@ -1,0 +1,358 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap');
+
+:root {
+  --js-yellow: #FFD600;
+  --js-yellow-light: #FFEA40;
+  --js-yellow-dark: #F9A800;
+  --js-amber: #FF8F00;
+  --js-amber-dark: #E65100;
+  --bg-primary: #080C18;
+  --bg-secondary: #0D1225;
+  --bg-card: #111827;
+  --green-india: #138808;
+  --green-light: #22C55E;
+  --cream: #FFFBEB;
+  --text-muted: #9CA3AF;
+  --text-dim: #6B7280;
+  --glass: rgba(255, 214, 0, 0.05);
+  --glass-border: rgba(255, 214, 0, 0.18);
+  --card-border: rgba(255, 214, 0, 0.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: var(--bg-primary);
+  color: var(--cream);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 15% 0%, rgba(255, 214, 0, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 70% at 85% 100%, rgba(255, 143, 0, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(19, 136, 8, 0.04)  0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ══════════════════════════════════════════
+   MASTHEAD
+   ══════════════════════════════════════════ */
+.masthead {
+  position: relative;
+  z-index: 10;
+  background: linear-gradient(160deg, #080C18 0%, #0D1630 55%, #080C18 100%);
+  overflow: hidden;
+  padding-bottom: 2rem;
+}
+
+.tricolor-bar {
+  height: 5px;
+  background: linear-gradient(90deg,
+    var(--js-amber-dark) 0%,
+    var(--js-amber) 8%,
+    var(--js-yellow) 33%,
+    #ffffff 33%,
+    #ffffff 66%,
+    var(--green-india) 66%,
+    #0A7A04 100%
+  );
+}
+
+.masthead-inner {
+  max-width: 1340px;
+  margin: 0 auto;
+  padding: 1.8rem 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.top-bar {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.date-pill {
+  background: rgba(255,214,0,0.12);
+  border: 1px solid rgba(255,214,0,0.32);
+  color: var(--js-yellow);
+  padding: 0.28rem 0.9rem;
+  border-radius: 100px;
+  font-weight: 700;
+}
+
+.masthead h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(2.6rem, 6.5vw, 4.5rem);
+  font-weight: 900;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--js-yellow-light), var(--js-yellow), var(--js-amber));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+}
+
+.masthead .subtitle {
+  margin-top: 0.55rem;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.masthead .subtitle span {
+  color: var(--js-yellow);
+  font-weight: 600;
+}
+
+/* ══════════════════════════════════════════
+   LAYOUT
+   ══════════════════════════════════════════ */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── APP WRAP ── */
+.app-wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 5rem;
+}
+
+/* ── CARDS (GLASS) ── */
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+  backdrop-filter: blur(10px);
+}
+
+/* ── FORM ── */
+.form-field { margin-bottom: 1.5rem; }
+label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--js-yellow);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+input, textarea, select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 214, 0, 0.15);
+  border-radius: 12px;
+  color: var(--cream);
+  padding: 0.8rem 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+input:focus, textarea:focus {
+  border-color: var(--js-yellow);
+  box-shadow: 0 0 0 4px rgba(255, 214, 0, 0.08);
+  outline: none;
+}
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  padding: 0.9rem 2rem;
+  border-radius: 100px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--js-yellow), var(--js-amber));
+  color: #1A0F00;
+  box-shadow: 0 8px 25px rgba(255, 214, 0, 0.25);
+}
+
+.btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(255, 214, 0, 0.4);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid rgba(255, 214, 0, 0.3);
+  color: var(--js-yellow);
+}
+
+.btn-outline:hover { background: rgba(255, 214, 0, 0.08); }
+
+/* ══════════════════════════════════════════
+   MAGAZINE REVIEW UI
+   ══════════════════════════════════════════ */
+.magazine-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+.article-card {
+  background: linear-gradient(135deg, rgba(255,214,0,0.03), rgba(255,255,255,0.01));
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.4s ease;
+  position: relative;
+}
+
+.article-card:hover {
+  border-color: rgba(255,214,0,0.3);
+  transform: translateY(-5px);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+}
+
+.article-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--js-yellow);
+}
+
+.card-idx {
+  font-family: 'Playfair Display', serif;
+  font-size: 3rem;
+  font-weight: 900;
+  color: var(--js-yellow);
+  opacity: 0.15;
+  position: absolute;
+  top: 1rem; right: 1.5rem;
+}
+
+.card-body { padding: 2rem; }
+
+.tag-select {
+  display: inline-block;
+  width: auto;
+  padding: 0.3rem 0.8rem;
+  background: rgba(255,214,0,0.1);
+  color: var(--js-yellow);
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  border: 1px solid rgba(255,214,0,0.2);
+  margin-bottom: 1rem;
+}
+
+/* ══════════════════════════════════════════
+   TICKER (BREAKING)
+   ══════════════════════════════════════════ */
+.ticker-strip {
+  background: linear-gradient(90deg, #1A0F00 0%, #3D2000 50%, #1A0F00 100%);
+  border-top: 2px solid var(--js-yellow);
+  padding: 0.7rem 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.ticker-label {
+  background: var(--js-yellow);
+  color: #1A0F00;
+  padding: 0.4rem 1.2rem;
+  font-weight: 900;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  white-space: nowrap;
+}
+
+.marquee {
+  display: flex;
+  white-space: nowrap;
+  animation: marquee 30s linear infinite;
+}
+
+.marquee span {
+  padding: 0 2rem;
+  font-size: 0.8rem;
+  color: var(--js-yellow-light);
+  font-weight: 600;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ══════════════════════════════════════════
+   STATS STRIP
+   ══════════════════════════════════════════ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.stat-box {
+  background: linear-gradient(135deg, rgba(255,214,0,0.1), rgba(255,143,0,0.05));
+  border: 1px solid var(--glass-border);
+  padding: 1.5rem;
+  border-radius: 18px;
+  text-align: center;
+}
+
+.stat-val {
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 900;
+  color: var(--js-yellow);
+}
+
+.stat-lbl {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-top: 0.3rem;
+}
+
+/* Spinner */
+.spinner-mag {
+  width: 60px; height: 60px;
+  border: 4px solid rgba(255,214,0,0.1);
+  border-top-color: var(--js-yellow);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
