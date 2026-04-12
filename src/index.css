@@ -465,9 +465,49 @@ body {
 }
 
 /* ─── RESPONSIVE ─── */
+@media (max-width: 1024px) {
+  .builder-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+  .builder-main { padding: 2rem 1.5rem 4rem; }
+}
+
 @media (max-width: 768px) {
-  .app-header { flex-direction: column; height: auto; padding: 1rem 1.5rem; gap: 1rem; }
-  .builder-main { padding: 1.5rem 1rem 4rem; }
+  .app-header { 
+    flex-direction: column; 
+    height: auto; 
+    padding: 1.2rem 1.5rem; 
+    gap: 1.2rem; 
+    text-align: center;
+  }
+  .header-actions {
+    width: 100%;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .date-input { width: 45%; }
+  .btn-primary { flex: 1; justify-content: center; white-space: nowrap; }
+
+  .hero-strip { padding: 10px 1.2rem; flex-wrap: wrap; justify-content: center; }
+  .hero-strip .hs-line { display: none; }
+  .hero-strip .hs-text { font-size: 11px; flex: 1 0 100%; text-align: center; }
+
+  .builder-main { padding: 1.5rem 1rem 4rem; gap: 2rem; }
+  .builder-header { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+  .builder-header h3 { font-size: 1.35rem; }
+  .sec-count { margin-bottom: 0.5rem; }
+  .btn-add { width: 100%; justify-content: center; }
+
   .builder-grid { grid-template-columns: 1fr; }
-  .hero-strip { padding: 12px 1.5rem; }
+  .edit-card { padding: 1rem; }
+  
+  .page-footer { flex-direction: column; text-align: center; gap: 1rem; padding: 25px 1.5rem; }
+}
+
+@media (max-width: 480px) {
+  .brand h1 { font-size: 1.3rem; }
+  .edition { font-size: 8px; letter-spacing: 2px; }
+  .header-actions { flex-direction: column; width: 100%; }
+  .date-input { width: 100%; }
+  .date-input input { text-align: center; }
+  .btn-primary { width: 100%; }
 }

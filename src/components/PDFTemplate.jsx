@@ -319,16 +319,14 @@ const PDFTemplate = forwardRef(({ date, articles }, ref) => {
             <div className="masthead-rule-top" />
             <div className="masthead-rule-thin" />
 
-            <div className="meta-bar">
-              <span>Vol. IV • Issue No. 42</span>
+            <div className="meta-bar" style={{ justifyContent: 'center' }}>
               <span className="meta-date">{dateDisplay}</span>
-              <span>Digital Edition • ₹0</span>
             </div>
 
             <div className="ribbon-wrap">
               <div className="ribbon-line" />
               <span className="ribbon-text">
-                ❝ Satyam Shivam Sundaram — Truth, Goodness & Beauty in Every Story ❞
+                सहीं लोग, सही सोच, सामूहिक प्रयास
               </span>
               <div className="ribbon-line" />
             </div>
@@ -343,7 +341,6 @@ const PDFTemplate = forwardRef(({ date, articles }, ref) => {
           Jan Suraaj Media Division • Bihar Political Scan • {dateDisplay}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div className="footer-right">Proprietary<br />Digital Edition</div>
           <div className="footer-pg">{pgNum}</div>
         </div>
       </footer>
