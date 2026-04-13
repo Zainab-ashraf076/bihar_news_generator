@@ -18,6 +18,13 @@ const PARTY_LOGOS = {
   'congress': new URL('/congress.jpeg', window.location.origin).href,
 };
 
+const SECTION_LOGOS = {
+  'national': new URL('/national.jpeg', window.location.origin).href,
+  'international': new URL('/international.jpeg', window.location.origin).href,
+  'opinion': new URL('/opinion.jpeg', window.location.origin).href,
+  'civic': new URL('/civic.jpeg', window.location.origin).href,
+};
+
 const PARTY_NAMES = {
   'jan-suraaj': 'Jan Suraaj',
   'bjp': 'Bhartiya Janta Party',
@@ -58,7 +65,7 @@ const css = `
   .party-tag { display: inline-block; background: ${AMBER_400}; color: ${INK}; font-family: 'Outfit', sans-serif; font-size: 9.5px; font-weight: 900; padding: 2.5px 9px; border-radius: 4px; margin-bottom: 7px; text-transform: uppercase; }
 
   .news-card { display: flex; gap: 15px; padding: 15px 0; border-bottom: 1px solid ${RULE}; }
-  .news-card-logo { width: 44px; height: 44px; object-fit: contain; padding: 4px; background: #fff; border: 1px solid ${RULE}; border-radius: 6px; }
+  .news-card-logo { width: 55px; height: 55px; object-fit: contain; }
   .news-card-body { flex: 1; }
   .news-card-h { font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700; margin-bottom: 6px; line-height: 1.35; color: ${INK}; }
   .news-card-p { font-size: 11px; line-height: 1.6; color: ${SLATE}; }
@@ -87,7 +94,7 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
 
   const pNewsP1 = pNews.slice(0, 2);
   const restOfNewsGroup = [
-    ...pNews.slice(2).map(a => ({ ...a, sTitle: 'Political Landscape (Cont.)' })),
+    ...pNews.slice(2),
     ...cNews.map(a => ({ ...a, sTitle: 'Civic & Social' })),
     ...oNews.map(a => ({ ...a, sTitle: 'Opinion & Editorial', type: 'op' })),
     ...nNews.map(a => ({ ...a, sTitle: 'National Pulse' })),
@@ -109,15 +116,18 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
     tweetChunks.push(restOfTweets.slice(i, i + tweetsPerPage));
   }
 
-  const renderCard = (a, i) => (
+  const renderCard = (a, i, category = 'political') => (
     <div key={i} className="news-card">
       <div style={{ display: 'flex', gap: '15px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <img src={a.customLogo || PARTY_LOGOS[a.party]} className="news-card-logo" crossOrigin="anonymous" />
-          {a.image && <img src={a.image} style={{ width: 85, height: 55, objectFit: 'cover', borderRadius: 4 }} crossOrigin="anonymous" />}
+          {category === 'political' && (
+            <img src={a.customLogo || PARTY_LOGOS[a.party]} className="news-card-logo" crossOrigin="anonymous" />
+          )}
         </div>
         <div className="news-card-body">
-          {a.party && <div className="party-tag">{a.party === 'jan-suraaj' ? 'Jan Suraaj' : (PARTY_NAMES[a.party] || a.party)}</div>}
+          {category === 'political' && a.party && (
+            <div className="party-tag">{a.party === 'jan-suraaj' ? 'Jan Suraaj' : (PARTY_NAMES[a.party] || a.party)}</div>
+          )}
           <div className="news-card-h">{a.headline}</div>
           <div className="news-card-p">{a.summary}</div>
           <a href={a.url} className="read-more">Read More →</a>
@@ -125,6 +135,25 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
       </div>
     </div>
   );
+
+  const getSectionLogo = (sTitle) => {
+    if (sTitle === 'Civic & Social') return SECTION_LOGOS.civic;
+    if (sTitle === 'Opinion & Editorial') return SECTION_LOGOS.opinion;
+    if (sTitle === 'National Pulse') return SECTION_LOGOS.national;
+    if (sTitle === 'International Desk') return SECTION_LOGOS.international;
+    return null;
+  };
+
+  const renderSectionHeading = (sTitle) => {
+    const logo = getSectionLogo(sTitle);
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '15px 0 8px' }}>
+        {logo && <img src={logo} style={{ width: 45, height: 45, objectFit: 'contain' }} crossOrigin="anonymous" />}
+        <h2 style={{ fontFamily: 'Playfair Display', fontSize: '20px' }}>{sTitle}</h2>
+        <div style={{ flex: 1, height: '1px', background: RULE }} />
+      </div>
+    );
+  };
 
   const MasterPage = ({ children, pgNum, showMasthead = false }) => (
     <div className={`mag-root ${pgNum > 1 ? 'page-break' : ''}`}>
@@ -174,13 +203,25 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
           </section>
         )}
         <div style={{ display: 'grid', gridTemplateColumns: tweetsP1.length > 0 ? '2.1fr 0.9fr' : '1fr', gap: '24px' }}>
-          <div>{pNewsP1.map(renderCard)}</div>
+          <div>
+            {pNewsP1.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '15px 0 8px' }}>
+                <h2 style={{ fontFamily: 'Playfair Display', fontSize: '20px' }}>Political Landscape</h2>
+                <div style={{ flex: 1, height: '1px', background: RULE }} />
+              </div>
+            )}
+            {pNewsP1.map((a, i) => renderCard(a, i, 'political'))}
+          </div>
           {tweetsP1.length > 0 && (
             <div className="side-col">
               <div className="tweet-sidebar">
                 <div className="sidebar-h">Twitter Trendings</div>
                 {tweetsP1.map((t, idx) => (
-                  <div key={idx} className="t-card"><span className="t-user">{t.user}</span><p style={{ fontSize: '9px', fontStyle: 'italic' }}>"{t.text}"</p></div>
+                  <div key={idx} className="t-card">
+                    {t.image && <img src={t.image} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }} crossOrigin="anonymous" />}
+                    <span className="t-user">{t.user}</span>
+                    <p style={{ fontSize: '9px', fontStyle: 'italic' }}>"{ t.text}"</p>
+                  </div>
                 ))}
               </div>
             </div>
@@ -195,8 +236,8 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
             <div style={{ flex: 1 }}>
               {chunk.map((a, i) => (
                 <div key={i}>
-                  {(i === 0 || a.sTitle !== chunk[i - 1].sTitle) && <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '15px 0 8px' }}><h2 style={{ fontFamily: 'Playfair Display', fontSize: '20px' }}>{a.sTitle}</h2><div style={{ flex: 1, height: '1px', background: RULE }} /></div>}
-                  {renderCard(a, i)}
+                  {(i === 0 || a.sTitle !== chunk[i - 1].sTitle) && renderSectionHeading(a.sTitle)}
+                  {renderCard(a, i, a.category)}
                 </div>
               ))}
             </div>
@@ -204,7 +245,11 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
               <div className="tweet-sidebar">
                 <div className="sidebar-h">Twitter Trendings</div>
                 {tweetChunks[cIdx].map((t, idx) => (
-                  <div key={idx} className="t-card"><span className="t-user">{t.user}</span><p style={{ fontSize: '9px', fontStyle: 'italic' }}>"{t.text}"</p></div>
+                  <div key={idx} className="t-card">
+                    {t.image && <img src={t.image} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }} crossOrigin="anonymous" />}
+                    <span className="t-user">{t.user}</span>
+                    <p style={{ fontSize: '9px', fontStyle: 'italic' }}>"{ t.text}"</p>
+                  </div>
                 ))}
               </div>
             )}
