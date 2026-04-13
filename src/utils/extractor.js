@@ -71,6 +71,11 @@ export async function fetchArticle(url) {
     const metaDesc = doc.querySelector('meta[name="description"]')?.getAttribute('content');
     let summary = (ogDesc || twDesc || metaDesc || '').trim();
     
+    // Image
+    const ogImage = doc.querySelector('meta[property="og:image"]')?.getAttribute('content');
+    const twImage = doc.querySelector('meta[name="twitter:image"]')?.getAttribute('content');
+    const image = (ogImage || twImage || '').trim();
+
     if (!summary) {
       const paras = [...doc.querySelectorAll('article p, .article-body p, .story-body p, p')]
         .map(p => p.textContent.trim())
@@ -82,11 +87,12 @@ export async function fetchArticle(url) {
     if (!summary) summary = 'Summary not available. Please edit this field.';
 
     const finalHeadline = headline.slice(0, 200);
-    const finalSummary = summary.slice(0, 420);
+    const finalSummary = summary.slice(0, 1200);
 
     return { 
       headline: finalHeadline, 
       summary: finalSummary, 
+      image: image,
       party: detectParty(finalHeadline + ' ' + finalSummary),
       sentiment: 'neutral'
     };
@@ -94,6 +100,7 @@ export async function fetchArticle(url) {
     return { 
       headline: 'Error parsing — please edit', 
       summary: 'Parsing failed. Enter summary manually.', 
+      image: '',
       party: 'jan-suraaj',
       sentiment: 'neutral'
     };

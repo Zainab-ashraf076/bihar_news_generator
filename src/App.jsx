@@ -1,37 +1,40 @@
 import React, { useState, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
-import { formatDateDisplay } from './utils/extractor';
+import { formatDateDisplay, fetchArticle } from './utils/extractor';
 import PDFTemplate from './components/PDFTemplate';
 
 const PARTY_LOGOS = {
-  'jan-suraaj': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Jan_Suraaj_logo.png/1024px-Jan_Suraaj_logo.png',
-  'bjp': 'https://upload.wikimedia.org/wikipedia/en/thumb/1/1e/Bharatiya_Janata_Party_logo.svg/512px-Bharatiya_Janata_Party_logo.svg.png',
-  'jdu': 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Janata_Dal_%28United%29_Logo.png/512px-Janata_Dal_%28United%29_Logo.png',
-  'rjd': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Rashtriya_Janata_Dal_logo.png/512px-Rashtriya_Janata_Dal_logo.png',
-  'congress': 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Indian_National_Congress_logo.svg/512px-Indian_National_Congress_logo.svg.png'
+  'jan-suraaj': new URL('/logo.png', window.location.origin).href,
+  'bjp': new URL('/bjp.jpeg', window.location.origin).href,
+  'jdu': new URL('/jdu.jpeg', window.location.origin).href,
+  'rjd': new URL('/rjd.jpeg', window.location.origin).href,
+  'congress': new URL('/congress.jpeg', window.location.origin).href,
+  'other': 'https://cdn-icons-png.flaticon.com/512/2991/2991279.png'
 };
 
-const DEFAULT_ARTICLES = [
-  { id: 1, category: 'viral', headline: 'Bihar Rising: 117km New Railway Line Approved', summary: 'A massive ₹3,606 Cr project connecting Bihta to Aurangabad will feature 13 new stations, transforming the transit landscape of Bihar.', url: 'https://example.com/railway', party: '' },
-  { id: 2, category: 'viral', headline: 'Sudha Kendras to Open in 8,053 Panchayats', summary: 'Boosting rural economy, the government announces the establishment of Sudha milk centers across every panchayat in the state.', url: 'https://example.com/sudha', party: '' },
-  { id: 3, category: 'viral', headline: 'Bhojpur-Buxar Elections: The Game Changer', summary: 'Political experts eye Jan Suraaj as the strategic player in upcoming legislative council votes scheduled for May 12.', url: 'https://example.com/elections', party: '' },
-  { id: 4, category: 'political', headline: 'Jan Suraaj Announces State-wide Padyatra Phase 2', summary: 'Prashant Kishor to lead the second phase of his transformative march, focusing on education and employment reform.', url: 'https://example.com/jan-suraaj', party: 'jan-suraaj' },
-  { id: 5, category: 'political', headline: 'BJP Strengthens Booth-level Connectivity in Bihar', summary: 'The party launches a new initiative to reach every voter through its robust karyakarta network before the upcoming polls.', url: 'https://example.com/bjp', party: 'bjp' },
-  { id: 6, category: 'indian', headline: 'India Overhauls Digital Infrastructure for Farmers', summary: 'New national portal aims to provide real-time market prices and weather updates to millions of farmers across India.', url: 'https://example.com/india-farmers', party: '' },
-  { id: 7, category: 'global', headline: 'Global Energy Transition: New Accords Signed', summary: 'Major nations agree on a roadmap to accelerate green hydrogen adoption to combat climate change challenges.', url: 'https://example.com/global-energy', party: '' }
+const TRENDING_TWEETS = [
+  { id: 1, user: '@JanSuraajAbhiyan', text: 'Bihar is ready for a change! The Padyatra is reaching new heights. #BiharRising #JanSuraaj', time: '12m ago' },
+  { id: 2, user: '@PrashantKishor', text: 'Education and employment are not just promises, they are rights. Let us build a new Bihar together. #NayaBihar', time: '45m ago' },
+  { id: 3, user: '@BiharPolitics', text: 'Rumors of alliance shifts are intensifying as the elections approach. Who will hold the key? #Bihar2026', time: '1h ago' },
+  { id: 4, user: '@KisanSamridhi', text: 'New subsidies for agricultural tech announced. A big win for Bihar farmers! 🚜 #Agriculture #FarmNews', time: '2h ago' },
+  { id: 5, user: '@PatnaDaily', text: 'Traffic alerts for Gandhi Maidan tomorrow due to state-wide rally. Plan your commute accordingly. #PatnaTraffic', time: '3h ago' }
 ];
 
 const SECTION_META = {
-  viral:    { emoji: '🔥', label: 'Most Viral News',    accent: '#fbbf24', note: 'Top 3 shown in magazine' },
-  political:{ emoji: '⚖️', label: 'Political Landscape', accent: '#fcd34d', note: 'Include party logos'    },
-  indian:   { emoji: '🇮🇳', label: 'Indian Horizons',   accent: '#fde68a', note: 'National stories'       },
-  global:   { emoji: '🌍', label: 'Global Pulse',        accent: '#fbbf24', note: 'World news'             },
+  headlines: { emoji: '🗞️', label: 'Top Headlines', accent: '#fbbf24', note: 'News of the Day section' },
+  political: { emoji: '⚖️', label: 'Political Landscape', accent: '#fcd34d', note: 'Include party logos' },
+  civic: { emoji: '🤝', label: 'Civic & Social', accent: '#fbbf24', note: 'Community & Social reform' },
+  opinion: { emoji: '💡', label: 'Editorial & Opinion', accent: '#fcd34d', note: 'Voice of Bihar' },
+  national: { emoji: '🇮🇳', label: 'National Desk', accent: '#fde68a', note: 'Indian news landscape' },
+  international: { emoji: '🌍', label: 'International', accent: '#fbbf24', note: 'Global pulse & reports' },
 };
 
 function App() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [articles, setArticles] = useState(DEFAULT_ARTICLES);
+  const [articles, setArticles] = useState([]);
+  const [tweets, setTweets] = useState(TRENDING_TWEETS);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [fetchingIds, setFetchingIds] = useState([]);
   const pdfRef = useRef(null);
 
   const addArticle = (category) => {
@@ -41,6 +44,7 @@ function App() {
       headline: '',
       summary: '',
       url: '',
+      image: '',
       party: category === 'political' ? 'jan-suraaj' : ''
     }]);
   };
@@ -53,22 +57,42 @@ function App() {
     setArticles(prev => prev.filter(a => a.id !== id));
   };
 
+  const handleFetchLink = async (id, url) => {
+    if (!url) return;
+    setFetchingIds(prev => [...prev, id]);
+    try {
+      const data = await fetchArticle(url);
+      setArticles(prev => prev.map(a => a.id === id ? { ...a, ...data } : a));
+    } catch (err) {
+      console.error('Fetch Error:', err);
+    }
+    setFetchingIds(prev => prev.filter(fid => fid !== id));
+  };
+
+  const updateTweetField = (id, key, val) => {
+    setTweets(prev => prev.map(t => t.id === id ? { ...t, [key]: val } : t));
+  };
+
+  const addTweet = () => {
+    setTweets(prev => [...prev, { id: Date.now(), user: '@UserHandle', text: '', time: 'Now' }]);
+  };
+
+  const removeTweet = (id) => {
+    setTweets(prev => prev.filter(t => t.id !== id));
+  };
+
   const handleGeneratePDF = async () => {
     setIsGenerating(true);
-    await new Promise(r => setTimeout(r, 800)); // More time for large images
+    await new Promise(r => setTimeout(r, 1000));
     const element = pdfRef.current;
-    
+
     const opt = {
       margin: 0,
       filename: `Bihar_News_Magazine_${date}.pdf`,
       image: { type: 'jpeg', quality: 1 },
-      html2canvas: { 
-        scale: 2, 
-        useCORS: true, 
-        logging: false,
-        letterRendering: true
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
     };
 
     try {
@@ -84,16 +108,16 @@ function App() {
     const { emoji, label, accent, note } = SECTION_META[category];
     const filtered = articles.filter(a => a.category === category);
     return (
-      <div key={category} className="section-builder" style={{ animationDelay: `${Object.keys(SECTION_META).indexOf(category) * 80}ms` }}>
+      <div key={category} className="section-builder">
         <div className="builder-header">
           <div className="sec-accent-bar" style={{ background: accent }} />
           <h3>{emoji} {label}</h3>
           <span className="sec-count">{filtered.length} article{filtered.length !== 1 ? 's' : ''} · {note}</span>
-          <button className="btn-add" onClick={() => addArticle(category)}>+ Add</button>
+          <button className="btn-add" onClick={() => addArticle(category)}>+ Add Story</button>
         </div>
         <div className="builder-grid">
           {filtered.length === 0 && (
-            <div className="empty-state">No articles yet. Click "+ Add" to add a story.</div>
+            <div className="empty-state">No stories in this section. Click "+ Add Story" to create a new one.</div>
           )}
           {filtered.map(art => (
             <div key={art.id} className="edit-card">
@@ -121,59 +145,59 @@ function App() {
                       <option value="congress">Congress</option>
                       <option value="other">Other Party</option>
                     </select>
-                    <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                      <input 
-                        type="text"
-                        placeholder="Paste Logo URL..."
-                        value={art.customLogo || ''}
-                        onChange={(e) => updateArticle(art.id, 'customLogo', e.target.value)}
-                        style={{ fontSize: '11px', height: '34px', flex: 1 }}
-                      />
-                      <label className="btn-add" style={{ padding: '0 12px', fontSize: '10px', height: '34px', display: 'flex', alignItems: 'center', margin: 0 }}>
-                        Upload
-                        <input 
-                          type="file" 
-                          accept="image/*"
-                          style={{ display: 'none' }}
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => updateArticle(art.id, 'customLogo', reader.result);
-                              reader.readAsDataURL(file);
-                            }
-                          }}
-                        />
-                      </label>
-                    </div>
                   </div>
                 )}
                 {category !== 'political' && <div />}
                 <button className="btn-del" onClick={() => removeArticle(art.id)} title="Delete">×</button>
               </div>
+
+              <div className="input-with-action">
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label>Scan Source (URL)</label>
+                  <input
+                    placeholder="Paste link..." congressjdu
+                    value={art.url}
+                    onChange={(e) => updateArticle(art.id, 'url', e.target.value)}
+                  />
+                </div>
+                <button
+                  className={`btn-scan ${fetchingIds.includes(art.id) ? 'scanning' : ''}`}
+                  onClick={() => handleFetchLink(art.id, art.url)}
+                  disabled={!art.url || fetchingIds.includes(art.id)}
+                >
+                  {fetchingIds.includes(art.id) ? '⌛ Working...' : '🔍 Scan'}
+                </button>
+              </div>
+
+              <div className="image-preview-group">
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label>Featured Image URL</label>
+                  <input
+                    placeholder="https://..."
+                    value={art.image || ''}
+                    onChange={(e) => updateArticle(art.id, 'image', e.target.value)}
+                  />
+                </div>
+                {art.image && (
+                  <div className="img-preview" style={{ backgroundImage: `url(${art.image})` }} />
+                )}
+              </div>
+
               <div className="input-group">
                 <label>Headline</label>
                 <input
-                  placeholder="Enter a catchy headline..."
+                  placeholder="Enter headline..."
                   value={art.headline}
                   onChange={(e) => updateArticle(art.id, 'headline', e.target.value)}
                 />
               </div>
               <div className="input-group">
-                <label>Summary</label>
+                <label>Summary Content</label>
                 <textarea
-                  placeholder="Write the news summary here..."
+                  placeholder="Summarize the core story..."
                   value={art.summary}
                   onChange={(e) => updateArticle(art.id, 'summary', e.target.value)}
-                  rows={3}
-                />
-              </div>
-              <div className="input-group">
-                <label>Source URL</label>
-                <input
-                  placeholder="https://..."
-                  value={art.url}
-                  onChange={(e) => updateArticle(art.id, 'url', e.target.value)}
+                  rows={4}
                 />
               </div>
             </div>
@@ -188,7 +212,7 @@ function App() {
       {isGenerating && (
         <div className="loader">
           <div className="loader-box" />
-          <p>Drafting Your Official Edition…</p>
+          <p>Drafting Edition…</p>
         </div>
       )}
 
@@ -211,25 +235,60 @@ function App() {
       <div className="hero-strip">
         <div className="hs-tag">Amber Edition</div>
         <div className="hs-line" />
-        <span className="hs-text">
-          ❝ Dedicated to Truth and Progress in Bihar ❞
-        </span>
+        <span className="hs-text">Dedicated to Truth and Progress in Bihar</span>
         <div className="hs-line" />
         <div className="hs-tag">Professional</div>
       </div>
 
-      <main className="builder-main">
-        {['viral', 'political', 'indian', 'global'].map(renderSection)}
-      </main>
+      <div className="app-main-layout">
+        <main className="builder-main">
+          {['headlines', 'political', 'civic', 'opinion', 'national', 'international'].map(renderSection)}
+        </main>
+
+        <aside className="trending-sidebar">
+          <div className="sidebar-header">
+            <div className="trending-dot" />
+            <h4>Trends Manager</h4>
+            <button className="btn-add" onClick={addTweet}>+ Add Trend</button>
+          </div>
+          <div className="tweets-list">
+            {tweets.map(tweet => (
+              <div key={tweet.id} className="tweet-card-editor" style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: '10px', padding: '12px', marginBottom: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.2)' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Handle</label>
+                    <input
+                      value={tweet.user}
+                      onChange={(e) => updateTweetField(tweet.id, 'user', e.target.value)}
+                      style={{ background: '#1e293b', border: '1px solid #334155', color: '#fbbf24', fontSize: '11px', fontWeight: '800', width: '100%', padding: '6px 8px', borderRadius: '6px', outline: 'none' }}
+                    />
+                  </div>
+                  <button onClick={() => removeTweet(tweet.id)} style={{ alignSelf: 'flex-end', background: '#450a0a', border: '1px solid #991b1b', color: '#f87171', width: '28px', height: '28px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
+                </div>
+                <div>
+                  <label style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Trend Content</label>
+                  <textarea
+                    value={tweet.text}
+                    onChange={(e) => updateTweetField(tweet.id, 'text', e.target.value)}
+                    style={{ background: '#020617', border: '1px solid #334155', color: '#f8fafc', fontSize: '12px', width: '100%', borderRadius: '6px', padding: '10px', minHeight: '60px', outline: 'none', lineHeight: '1.4' }}
+                    placeholder="Enter trend details here..."
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="sidebar-footer">
+            <span>Bihar Media Tech Engine 2.0</span>
+          </div>
+        </aside>
+      </div>
 
       <footer className="page-footer">
-        <span>Bihar Media Scan</span>
-        <strong>Official News Magazine Architect</strong>
-        <span>© 2026 Jan Suraaj Media</span>
+        <span>© 2026 Jan Suraaj Media Division</span>
       </footer>
 
       <div style={{ visibility: 'hidden', position: 'absolute', top: '-9999px', left: 0 }}>
-        <PDFTemplate date={date} articles={articles} ref={pdfRef} />
+        <PDFTemplate date={date} articles={articles} tweets={tweets} ref={pdfRef} />
       </div>
     </div>
   );
