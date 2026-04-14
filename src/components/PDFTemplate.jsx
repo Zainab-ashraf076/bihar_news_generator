@@ -12,17 +12,18 @@ const RULE = '#e2e8f0';
 const AM = '#fffdf5';
 
 const PARTY_LOGOS = {
-  'jan-suraaj': new URL('/logo.png', window.location.origin).href,
-  'jdu': new URL('/jdu.jpeg', window.location.origin).href,
-  'rjd': new URL('/rjd.jpeg', window.location.origin).href,
-  'congress': new URL('/congress.jpeg', window.location.origin).href,
+  'jan-suraaj': new URL('/js.png', window.location.origin).href,
+  'bjp': new URL('/bjp.png', window.location.origin).href,
+  'jdu': new URL('/JDU.png', window.location.origin).href,
+  'rjd': new URL('/rjd.png', window.location.origin).href,
+  'congress': new URL('/Congress.png', window.location.origin).href,
 };
 
 const SECTION_LOGOS = {
-  'national': new URL('/national.jpeg', window.location.origin).href,
-  'international': new URL('/international.jpeg', window.location.origin).href,
-  'opinion': new URL('/opinion.jpeg', window.location.origin).href,
-  'civic': new URL('/civic.jpeg', window.location.origin).href,
+  'national': new URL('/National.png', window.location.origin).href,
+  'international': new URL('/International.png', window.location.origin).href,
+  'opinion': new URL('/Opinion.png', window.location.origin).href,
+  'civic': new URL('/Civic.png', window.location.origin).href,
 };
 
 const PARTY_NAMES = {
@@ -35,7 +36,7 @@ const PARTY_NAMES = {
 };
 
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Outfit:wght@300;400;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700;1,900&family=Outfit:wght@300;400;600;700;800&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Noto+Sans+Devanagari:wght@400;700;900&display=swap');
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
   .mag-wrapper { width: 210mm; background: #bbb; display: block; margin: 0; padding: 0; }
@@ -60,7 +61,7 @@ const css = `
   .meta-date { background: ${AMBER_300}; padding: 3px 20px; border-radius: 4px; border: 2.5px solid ${INK}; transform: translateY(14px); }
 
   .ribbon-banner { background: ${AMBER_400}; margin: 5px -52px 25px; padding: 12px 52px; text-align: center; border-top: 2px solid ${INK}; border-bottom: 2px solid ${INK}; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
-  .ribbon-text { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: 6px; color: ${INK}; }
+  .ribbon-text { font-family: 'Noto Sans Devanagari', 'Playfair Display', serif; font-size: 20px; font-weight: 900; letter-spacing: 1px; color: ${INK}; }
 
   .party-tag { display: inline-block; background: ${AMBER_400}; color: ${INK}; font-family: 'Outfit', sans-serif; font-size: 9.5px; font-weight: 900; padding: 2.5px 9px; border-radius: 4px; margin-bottom: 7px; text-transform: uppercase; }
 
@@ -95,15 +96,15 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
   const pNewsP1 = pNews.slice(0, 2);
   const restOfNewsGroup = [
     ...pNews.slice(2),
-    ...cNews.map(a => ({ ...a, sTitle: 'Civic & Social' })),
-    ...oNews.map(a => ({ ...a, sTitle: 'Opinion & Editorial', type: 'op' })),
-    ...nNews.map(a => ({ ...a, sTitle: 'National Pulse' })),
-    ...iNews.map(a => ({ ...a, sTitle: 'International Desk' }))
+    ...cNews.map(a => ({ ...a, sTitle: 'जन सरोकार' })),
+    ...oNews.map(a => ({ ...a, sTitle: 'विचार मंच', type: 'op' })),
+    ...nNews.map(a => ({ ...a, sTitle: 'देश की खबरें' })),
+    ...iNews.map(a => ({ ...a, sTitle: 'विदेश दर्पण' })),
   ];
 
-  // BALANCED CHUNKING: Use 4 items per page for Page 2+ to ensure bottom whitespace
+  // BALANCED CHUNKING: Dynamic items per page based on content
   const chunks = [];
-  const itemsPerPage = 4;
+  const itemsPerPage = restOfNewsGroup.length <= 6 ? restOfNewsGroup.length : 6;
   for (let i = 0; i < restOfNewsGroup.length; i += itemsPerPage) {
     chunks.push(restOfNewsGroup.slice(i, i + itemsPerPage));
   }
@@ -137,10 +138,10 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
   );
 
   const getSectionLogo = (sTitle) => {
-    if (sTitle === 'Civic & Social') return SECTION_LOGOS.civic;
-    if (sTitle === 'Opinion & Editorial') return SECTION_LOGOS.opinion;
-    if (sTitle === 'National Pulse') return SECTION_LOGOS.national;
-    if (sTitle === 'International Desk') return SECTION_LOGOS.international;
+    if (sTitle === 'जन सरोकार') return SECTION_LOGOS.civic;
+    if (sTitle === 'विचार मंच') return SECTION_LOGOS.opinion;
+    if (sTitle === 'देश की खबरें') return SECTION_LOGOS.national;
+    if (sTitle === 'विदेश दर्पण') return SECTION_LOGOS.international;
     return null;
   };
 
@@ -164,7 +165,7 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
           <>
             <div className="masthead-title">Bihar Media <span>Scan</span></div>
             <div className="meta-bar"><span className="meta-date">{dateDisplay}</span></div>
-            <div className="ribbon-banner"><span className="ribbon-text">News of the Day</span></div>
+            <div className="ribbon-banner"><span className="ribbon-text">आज क्या कहता है बिहार?</span></div>
           </>
         )}
         {children}
@@ -191,11 +192,18 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginBottom: '20px' }}>
               {hNews.map((a, i) => (
-                <div key={i} style={{ background: AMBER_100, border: '1px solid ' + AMBER_200, borderTop: '4px solid ' + AMBER_500, borderRadius: '6px', overflow: 'hidden' }}>
+                <div key={i} style={{ background: AMBER_100, border: '1px solid ' + AMBER_200, borderTop: '4px solid ' + AMBER_500, borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                   {a.image && <img src={a.image} style={{ width: '100%', aspectRatio: '16 / 9', objectFit: 'cover' }} crossOrigin="anonymous" />}
-                  <div style={{ padding: '10px' }}>
-                    <div style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'Playfair Display' }}>{a.headline}</div>
-                    <a href={a.url} style={{ fontSize: '8px', fontWeight: 'bold', color: INK, marginTop: '8px', textDecoration: 'none', borderBottom: '2px solid ' + AMBER_400, display: 'inline-block' }}>READ MORE →</a>
+                  <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingTop: a.image ? '10px' : '16px' }}>
+                    <div>
+                      <div style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: 'Playfair Display', lineHeight: '1.35', marginBottom: '8px' }}>{a.headline}</div>
+                      {!a.image && a.summary && (
+                        <div style={{ fontSize: '9px', color: SLATE, lineHeight: '1.4', marginBottom: '8px' }}>
+                          {a.summary}
+                        </div>
+                      )}
+                    </div>
+                    <a href={a.url} style={{ fontSize: '8px', fontWeight: 'bold', color: INK, textDecoration: 'none', borderBottom: '2px solid ' + AMBER_400, display: 'inline-block' }}>READ MORE →</a>
                   </div>
                 </div>
               ))}
@@ -206,7 +214,7 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
           <div>
             {pNewsP1.length > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '15px 0 8px' }}>
-                <h2 style={{ fontFamily: 'Playfair Display', fontSize: '20px' }}>Political Landscape</h2>
+                <h2 style={{ fontFamily: "'Noto Sans Devanagari', 'Playfair Display', serif", fontSize: '20px', fontWeight: 700 }}>सत्ता से जुड़ी खबरें</h2>
                 <div style={{ flex: 1, height: '1px', background: RULE }} />
               </div>
             )}
