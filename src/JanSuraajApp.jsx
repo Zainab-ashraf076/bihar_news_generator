@@ -1,0 +1,251 @@
+import React, { useState, useRef } from 'react';
+import html2pdf from 'html2pdf.js';
+import { formatDateDisplay, fetchArticle } from './utils/extractor';
+import JanSuraajPDFTemplate from './components/JanSuraajPDFTemplate';
+import { Link } from 'react-router-dom';
+
+const PARTY_LOGOS = {
+  'jan-suraaj': new URL('/logo.png', window.location.origin).href,
+  'bjp': new URL('/bjp.jpeg', window.location.origin).href,
+  'jdu': new URL('/jdu.jpeg', window.location.origin).href,
+  'rjd': new URL('/rjd.jpeg', window.location.origin).href,
+  'congress': new URL('/congress.jpeg', window.location.origin).href,
+  'other': 'https://cdn-icons-png.flaticon.com/512/2991/2991279.png'
+};
+
+const SECTION_LOGOS = {};
+
+const TRENDING_TWEETS = [
+];
+
+const SECTION_META = {
+  headlines: { emoji: '🗞️', label: 'Jan Suraaj News', accent: '#f59e0b', note: 'Top 3 cards (1 Full + 2 Half)' },
+  political: { emoji: '⚖️', label: 'Jan Suraaj Samachar', accent: '#fbbf24', note: 'Political updates' },
+};
+
+function JanSuraajApp() {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [articles, setArticles] = useState([]);
+  const [tweets, setTweets] = useState(TRENDING_TWEETS);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [fetchingIds, setFetchingIds] = useState([]);
+  const pdfRef = useRef(null);
+
+  const addArticle = (category) => {
+    setArticles(prev => [...prev, {
+      id: Date.now(),
+      category,
+      headline: '',
+      summary: '',
+      url: '',
+      image: '',
+      party: category === 'political' ? 'jan-suraaj' : ''
+    }]);
+  };
+
+  const updateArticle = (id, key, val) => {
+    setArticles(prev => prev.map(a => a.id === id ? { ...a, [key]: val } : a));
+  };
+
+  const removeArticle = (id) => {
+    setArticles(prev => prev.filter(a => a.id !== id));
+  };
+
+  const handleFetchLink = async (id, url) => {
+    if (!url) return;
+    setFetchingIds(prev => [...prev, id]);
+    try {
+      const data = await fetchArticle(url);
+      // Force Jan Suraaj party for this specific generator
+      setArticles(prev => prev.map(a => a.id === id ? { ...a, ...data, party: 'jan-suraaj' } : a));
+    } catch (err) {
+      console.error('Fetch Error:', err);
+    }
+    setFetchingIds(prev => prev.filter(fid => fid !== id));
+  };
+
+  const updateTweetField = (id, key, val) => {
+    setTweets(prev => prev.map(t => t.id === id ? { ...t, [key]: val } : t));
+  };
+
+  const addTweet = () => {
+    setTweets(prev => [...prev, { id: Date.now(), user: '@UserHandle', text: '', time: 'Now' }]);
+  };
+
+  const removeTweet = (id) => {
+    setTweets(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleGeneratePDF = async () => {
+    setIsGenerating(true);
+    await new Promise(r => setTimeout(r, 1000));
+    const element = pdfRef.current;
+
+    const opt = {
+      margin: 0,
+      filename: `Jan_Suraaj_News_${date}.pdf`,
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['css', 'legacy'] }
+    };
+
+    try {
+      await html2pdf().set(opt).from(element).save();
+    } catch (err) {
+      console.error('PDF Error:', err);
+      alert('Error generating PDF.');
+    }
+    setIsGenerating(false);
+  };
+
+  const renderSection = (category) => {
+    const { emoji, label, accent, note } = SECTION_META[category];
+    const filtered = articles.filter(a => a.category === category);
+    return (
+      <div key={category} className="section-builder">
+        <div className="builder-header">
+          <div className="sec-accent-bar" style={{ background: accent }} />
+          <h3>{emoji} {label}</h3>
+          <span className="sec-count">{filtered.length} article{filtered.length !== 1 ? 's' : ''} · {note}</span>
+          <button className="btn-add" onClick={() => addArticle(category)}>+ Add Story</button>
+        </div>
+        <div className="builder-grid">
+          {filtered.length === 0 && (
+            <div className="empty-state">No stories in this section.</div>
+          )}
+          {filtered.map(art => (
+            <div key={art.id} className="edit-card">
+              <div className="card-top">
+                {category === 'political' && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.8rem', width: '100%' }}>
+                    <img
+                      src={art.customLogo || PARTY_LOGOS[art.party]}
+                      alt={art.party}
+                      crossOrigin="anonymous"
+                      style={{ width: 55, height: 55, objectFit: 'contain' }}
+                    />
+                    <div style={{ fontWeight: '800', fontSize: '14px', color: '#f59e0b' }}>Jan Suraaj </div>
+                  </div>
+                )}
+                {['civic', 'national', 'international', 'opinion'].includes(category) && (
+                  <img src={SECTION_LOGOS[category]} alt={category} crossOrigin="anonymous" style={{ width: 70, height: 70, objectFit: 'contain' }} />
+                )}
+                <button className="btn-del" onClick={() => removeArticle(art.id)}>×</button>
+              </div>
+
+              <div className="input-with-action">
+                <input
+                  placeholder="Paste link..."
+                  value={art.url}
+                  onChange={(e) => updateArticle(art.id, 'url', e.target.value)}
+                />
+                <button
+                  className={`btn-scan ${fetchingIds.includes(art.id) ? 'scanning' : ''}`}
+                  onClick={() => handleFetchLink(art.id, art.url)}
+                  disabled={!art.url || fetchingIds.includes(art.id)}
+                >
+                  {fetchingIds.includes(art.id) ? '⌛' : '🔍'}
+                </button>
+              </div>
+
+              <div className="image-preview-group">
+                <input
+                  placeholder="Image URL"
+                  value={art.image || ''}
+                  onChange={(e) => updateArticle(art.id, 'image', e.target.value)}
+                />
+                {art.image && <div className="img-preview" style={{ backgroundImage: `url(${art.image})` }} />}
+              </div>
+
+              <input
+                placeholder="Headline"
+                value={art.headline}
+                onChange={(e) => updateArticle(art.id, 'headline', e.target.value)}
+                style={{ fontWeight: 'bold' }}
+              />
+              <textarea
+                placeholder="Summary..."
+                value={art.summary}
+                onChange={(e) => updateArticle(art.id, 'summary', e.target.value)}
+                rows={3}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="app-container js-theme">
+      {isGenerating && (
+        <div className="loader">
+          <div className="loader-box" />
+          <p>Drafting Jan Suraaj Edition…</p>
+        </div>
+      )}
+
+      <header className="app-header">
+        <div className="brand">
+          <span className="edition" style={{ background: '#f59e0b', color: '#000' }}>Jan Suraaj Edition</span>
+          <h1>Jan Suraaj <span>News</span></h1>
+        </div>
+        <div className="header-actions">
+          <div className="date-input">
+            <label>Edition Date</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
+          <Link to="/" className="btn-secondary" style={{ marginRight: '10px', textDecoration: 'none', color: '#64748b', fontSize: '12px' }}>
+            ← Back to Media Scan
+          </Link>
+          <button className="btn-primary" onClick={handleGeneratePDF} style={{ background: '#f59e0b' }}>
+            ⚡ Publish PDF
+          </button>
+        </div>
+      </header>
+
+      <div className="app-main-layout">
+        <main className="builder-main">
+          {['headlines', 'political'].map(renderSection)}
+        </main>
+
+        <aside className="trending-sidebar">
+          <div className="sidebar-header">
+            <div className="trending-dot" style={{ background: '#f59e0b' }} />
+            <h4>JS Tweets Trend</h4>
+            <button
+              className="btn-add"
+              onClick={addTweet}
+            >
+              + Add JS Tweet
+            </button>
+          </div>
+          <div className="tweets-list">
+            {tweets.map(tweet => (
+              <div key={tweet.id} className="tweet-card-editor" style={{ background: '#111', border: '1px solid #f59e0b33' }}>
+                <input
+                  value={tweet.user}
+                  onChange={(e) => updateTweetField(tweet.id, 'user', e.target.value)}
+                  style={{ color: '#f59e0b', background: 'transparent', border: 'none', fontSize: '12px', fontWeight: 'bold' }}
+                />
+                <textarea
+                  value={tweet.text}
+                  onChange={(e) => updateTweetField(tweet.id, 'text', e.target.value)}
+                  style={{ background: '#000', color: '#fff', fontSize: '11px' }}
+                />
+                <button onClick={() => removeTweet(tweet.id)} className="btn-del-small">×</button>
+              </div>
+            ))}
+          </div>
+        </aside>
+      </div>
+
+      <div style={{ visibility: 'hidden', position: 'absolute', top: '-9999px', left: 0 }}>
+        <JanSuraajPDFTemplate date={date} articles={articles} tweets={tweets} ref={pdfRef} />
+      </div>
+    </div>
+  );
+}
+
+export default JanSuraajApp;

@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import html2pdf from 'html2pdf.js';
 import { formatDateDisplay, fetchArticle } from './utils/extractor';
 import PDFTemplate from './components/PDFTemplate';
+import { Link } from 'react-router-dom';
 
 const PARTY_LOGOS = {
   'jan-suraaj': new URL('/logo.png', window.location.origin).href,
@@ -91,11 +92,13 @@ function App() {
   const handleGeneratePDF = async () => {
     setIsGenerating(true);
     await new Promise(r => setTimeout(r, 1000));
+    
     const element = pdfRef.current;
+    const filename = `Bihar_Media_Scan_${date}.pdf`;
 
     const opt = {
       margin: 0,
-      filename: `Bihar_News_Magazine_${date}.pdf`,
+      filename: filename,
       image: { type: 'jpeg', quality: 1 },
       html2canvas: { scale: 2, useCORS: true, logging: false },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
@@ -259,6 +262,9 @@ function App() {
             <label>Edition Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
+          <Link to="/js" className="btn-secondary" style={{ marginRight: '10px', textDecoration: 'none', color: '#64748b', fontSize: '12px' }}>
+            Go to Jan Suraaj News →
+          </Link>
           <button className="btn-primary" onClick={handleGeneratePDF}>
             ⚡ Publish PDF
           </button>
