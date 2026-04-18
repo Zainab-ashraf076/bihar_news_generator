@@ -92,7 +92,7 @@ function App() {
   const handleGeneratePDF = async () => {
     setIsGenerating(true);
     await new Promise(r => setTimeout(r, 1000));
-    
+
     const element = pdfRef.current;
     const filename = `Bihar_Media_Scan_${date}.pdf`;
 
@@ -262,9 +262,10 @@ function App() {
             <label>Edition Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <Link to="/js" className="btn-secondary" style={{ marginRight: '10px', textDecoration: 'none', color: '#64748b', fontSize: '12px' }}>
+          <button className="btn-primary"     >     <Link to="/js" className="btn-secondary" style={{ marginRight: '10px', textDecoration: 'none', color: '#0f0f10ff', fontSize: '12px' }}>
             Go to Jan Suraaj News →
           </Link>
+          </button>
           <button className="btn-primary" onClick={handleGeneratePDF}>
             ⚡ Publish PDF
           </button>
