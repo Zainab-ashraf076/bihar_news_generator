@@ -603,6 +603,52 @@ body {
   animation: spin 0.9s cubic-bezier(0.5,0,0.5,1) infinite;
 }
 
+/* ─── CUSTOM FILE UPLOAD ─── */
+.file-upload-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+  color: var(--amber);
+  border: 1px solid var(--amber);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.file-upload-label:hover {
+  background: var(--amber);
+  color: var(--ink);
+}
+
+.file-upload-label input[type="file"] {
+  display: none;
+}
+
+.btn-del-small {
+  background: rgba(220, 38, 38, 0.1);
+  color: var(--red);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-del-small:hover {
+  background: var(--red);
+  color: white;
+}
+
 /* ─── PAGE FOOTER ─── */
 .page-footer {
   background: var(--ink);

@@ -150,26 +150,55 @@ function JanSuraajApp() {
               </div>
 
               <div className="image-preview-group">
-                <input
-                  placeholder="Image URL"
-                  value={art.image || ''}
-                  onChange={(e) => updateArticle(art.id, 'image', e.target.value)}
-                />
+                <div className="input-group" style={{ flex: 1 }}>
+                  <label>Featured Image</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      placeholder="https://..."
+                      value={art.image || ''}
+                      onChange={(e) => updateArticle(art.id, 'image', e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <label className="file-upload-label">
+                      📁
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (evt) => {
+                              updateArticle(art.id, 'image', evt.target?.result);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
                 {art.image && <div className="img-preview" style={{ backgroundImage: `url(${art.image})` }} />}
               </div>
 
-              <input
-                placeholder="Headline"
-                value={art.headline}
-                onChange={(e) => updateArticle(art.id, 'headline', e.target.value)}
-                style={{ fontWeight: 'bold' }}
-              />
-              <textarea
-                placeholder="Summary..."
-                value={art.summary}
-                onChange={(e) => updateArticle(art.id, 'summary', e.target.value)}
-                rows={3}
-              />
+              <div className="input-group">
+                <label>Headline</label>
+                <input
+                  placeholder="Enter headline..."
+                  value={art.headline}
+                  onChange={(e) => updateArticle(art.id, 'headline', e.target.value)}
+                  style={{ fontWeight: 'bold' }}
+                />
+              </div>
+              <div className="input-group">
+                <label>Summary Content</label>
+                <textarea
+                  placeholder="Summarize the core story..."
+                  value={art.summary}
+                  onChange={(e) => updateArticle(art.id, 'summary', e.target.value)}
+                  rows={3}
+                />
+              </div>
             </div>
           ))}
         </div>
@@ -223,18 +252,51 @@ function JanSuraajApp() {
           </div>
           <div className="tweets-list">
             {tweets.map(tweet => (
-              <div key={tweet.id} className="tweet-card-editor" style={{ background: '#111', border: '1px solid #f59e0b33' }}>
-                <input
-                  value={tweet.user}
-                  onChange={(e) => updateTweetField(tweet.id, 'user', e.target.value)}
-                  style={{ color: '#f59e0b', background: 'transparent', border: 'none', fontSize: '12px', fontWeight: 'bold' }}
-                />
+              <div key={tweet.id} className="tweet-card-editor" style={{ background: '#111', border: '1px solid #f59e0b33', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <input
+                    value={tweet.user}
+                    onChange={(e) => updateTweetField(tweet.id, 'user', e.target.value)}
+                    style={{ color: '#f59e0b', background: 'transparent', border: 'none', fontSize: '12px', fontWeight: 'bold', flex: 1 }}
+                  />
+                  <button onClick={() => removeTweet(tweet.id)} className="btn-del-small">×</button>
+                </div>
                 <textarea
                   value={tweet.text}
                   onChange={(e) => updateTweetField(tweet.id, 'text', e.target.value)}
-                  style={{ background: '#000', color: '#fff', fontSize: '11px' }}
+                  style={{ background: '#000', color: '#fff', fontSize: '11px', minHeight: '50px' }}
+                  placeholder="Tweet content..."
                 />
-                <button onClick={() => removeTweet(tweet.id)} className="btn-del-small">×</button>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <label className="file-upload-label" style={{ padding: '4px 8px', fontSize: '10px' }}>
+                    + Image
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (evt) => {
+                            updateTweetField(tweet.id, 'image', evt.target?.result);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                  {tweet.image && (
+                    <div style={{
+                      width: '40px',
+                      height: '40px',
+                      backgroundImage: `url(${tweet.image})`,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      borderRadius: '4px',
+                      border: '1px solid #f59e0b'
+                    }} />
+                  )}
+                </div>
               </div>
             ))}
           </div>

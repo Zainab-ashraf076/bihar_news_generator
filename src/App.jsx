@@ -192,28 +192,32 @@ function App() {
               <div className="image-preview-group">
                 <div className="input-group" style={{ flex: 1 }}>
                   <label>Featured Image</label>
-                  <input
-                    placeholder="https://..."
-                    value={art.image || ''}
-                    onChange={(e) => updateArticle(art.id, 'image', e.target.value)}
-                  />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      placeholder="https://..."
+                      value={art.image || ''}
+                      onChange={(e) => updateArticle(art.id, 'image', e.target.value)}
+                      style={{ flex: 1 }}
+                    />
+                    <label className="file-upload-label">
+                      📁
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (evt) => {
+                              updateArticle(art.id, 'image', evt.target?.result);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (evt) => {
-                        updateArticle(art.id, 'image', evt.target?.result);
-                      };
-                      reader.readAsDataURL(file);
-                    }
-                  }}
-                  style={{ padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px', cursor: 'pointer' }}
-                  title="Upload image or paste URL above"
-                />
                 {art.image && (
                   <div className="img-preview" style={{ backgroundImage: `url(${art.image})` }} />
                 )}
@@ -315,22 +319,25 @@ function App() {
                   />
                 </div>
                 <div style={{ marginTop: '8px' }}>
-                  <label style={{ fontSize: '9px', color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>Trend Image (Optional)</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (evt) => {
-                          updateTweetField(tweet.id, 'image', evt.target?.result);
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    style={{ padding: '6px', border: '1px solid #334155', borderRadius: '6px', fontSize: '11px', cursor: 'pointer', color: '#f8fafc', width: '100%', background: '#020617' }}
-                  />
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <label className="file-upload-label" style={{ padding: '6px 12px', fontSize: '11px', flex: 1 }}>
+                      + Upload Image
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (evt) => {
+                              updateTweetField(tweet.id, 'image', evt.target?.result);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
                   {tweet.image && <div style={{ marginTop: '8px', width: '100%', height: 60, backgroundImage: `url(${tweet.image})`, backgroundSize: 'cover', backgroundPosition: 'center', borderRadius: '6px', border: '1px solid #334155' }} />}
                 </div>
               </div>
