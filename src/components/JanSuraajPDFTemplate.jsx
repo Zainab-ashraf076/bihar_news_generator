@@ -41,7 +41,7 @@ const FOOTER_HEIGHT = 50;
 const PAGE_TOP_MASTHEAD = 40;
 const PAGE_TOP_NORMAL = 90;
 const PAGE_BOTTOM_GAP = 65;    // breathing room above footer
-const PAGE_SIDE_PAD = 52;
+const PAGE_SIDE_PAD = 45;
 
 // Usable content height per page type
 const USABLE_HEIGHT_P1 = PAGE_HEIGHT_PX - PAGE_TOP_MASTHEAD - FOOTER_HEIGHT - PAGE_BOTTOM_GAP;
@@ -56,6 +56,7 @@ const SECTION_HEADING_H = 68;   // section icon + text + margin
 // Text layout constants
 const HEADLINE_LINE_H = 25.65;  // 19px * 1.35
 const SUMMARY_LINE_H = 17.6;   // 11px * 1.6
+const TWEETS_PER_PAGE = 6;
 const CHARS_PER_LINE = 88;     // approx chars per summary line at full width
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -543,7 +544,7 @@ const JanSuraajPDFTemplate = forwardRef(({
               })()}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px' }}>
               {hNews.map((a, i) => (
                 <div key={i} className={`headline-wrapper ${interactive ? 'interactive-mode' : ''}`}>
                   <div style={{ background: AMBER_100, border: `1px solid ${AMBER_200}`, borderTop: `4px solid ${AMBER_500}`, borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
