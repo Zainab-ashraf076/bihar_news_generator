@@ -184,7 +184,7 @@ function allocatePages(flowItems, firstPageAvailableH) {
     if (a.sTitle !== prevSTitle && a.sTitle) {
       prevSTitle = a.sTitle;
       const hH = SECTION_HEADING_H;
-      if (remainH < hH + 80) { commitPage(); }
+      if (remainH < hH + 150) { commitPage(); }
       addSlot({ type: 'sectionHeading', sTitle: a.sTitle }, hH);
     }
     const fullH = estimateCardHeight(a, a.category, false);
@@ -522,18 +522,23 @@ const JanSuraajPDFTemplate = forwardRef(({
   const p1Fixed = MASTHEAD_H + headlinesH;
   const p1Available = USABLE_HEIGHT_P1 - p1Fixed;
 
-  const useP1Overflow = p1Available > 350;
+  const useP1Overflow = p1Available > 150;
   const startH = useP1Overflow ? p1Available : USABLE_HEIGHT_REST;
   const allocatedPages = allocatePages(flowItems, startH);
 
   const p1ExtraSlots = useP1Overflow ? (allocatedPages[0]?.slots || []) : [];
   const dynamicPages = useP1Overflow ? allocatedPages.slice(1) : allocatedPages;
 
+  const TWEETS_PER_PAGE = 6;
   let p1Tweets = [];
   let dynamicTweets = [];
   if (useP1Overflow) {
-    p1Tweets = tweets.slice(0, TWEETS_PER_PAGE);
-    dynamicTweets = tweets.slice(TWEETS_PER_PAGE);
+    let maxP1Tweets = Math.floor((p1Available - 90) / 45);
+    if (maxP1Tweets < 0) maxP1Tweets = 0;
+    if (maxP1Tweets > TWEETS_PER_PAGE) maxP1Tweets = TWEETS_PER_PAGE;
+    
+    p1Tweets = tweets.slice(0, maxP1Tweets);
+    dynamicTweets = tweets.slice(maxP1Tweets);
   } else {
     dynamicTweets = tweets;
   }
