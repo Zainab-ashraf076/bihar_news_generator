@@ -102,14 +102,14 @@ const css = `
   .news-card { display:flex; gap:15px; padding:15px 0; border-bottom:1px solid ${RULE}; }
   .news-card-logo { width:55px; height:55px; object-fit:contain; flex-shrink:0; }
   .news-card-body { flex:1; min-width:0; }
-  .news-card-h { font-family:'Playfair Display',serif; font-size:19px; font-weight:700; margin-bottom:6px; line-height:1.35; color:${INK}; }
-  .news-card-p { font-size:11px; line-height:1.6; color:${SLATE}; }
+  .news-card-h { font-family:'Playfair Display',serif; font-size:19px; font-weight:700; margin-bottom:6px; line-height:1.35; color:${INK}; word-break: break-word; }
+  .news-card-p { font-size:11px; line-height:1.6; color:${SLATE}; word-break: break-word; }
   .read-more { font-family:'Outfit',sans-serif; font-size:9.5px; font-weight:800; color:${INK}; text-decoration:none; border-bottom:3px solid ${AMBER_400}; display:inline-block; margin-top:10px; text-transform:uppercase; }
 
   .cont-label { font-size:9px; color:${SLATE}; font-style:italic; margin-bottom:4px; }
-  .cont-headline { font-size:13px; font-weight:700; font-family:'Playfair Display',serif; color:${INK}; margin-bottom:6px; line-height:1.35; }
+  .cont-headline { font-size:13px; font-weight:700; font-family:'Playfair Display',serif; color:${INK}; margin-bottom:6px; line-height:1.35; word-break: break-word; }
 
-  .tweet-sidebar { background:#fff; border:2px solid ${AMBER_300}; padding:15px; border-radius:10px; box-shadow:4px 4px 0px ${AMBER_200}; overflow:hidden; }
+  .tweet-sidebar { background:#fff; border:2px solid ${AMBER_300}; padding:15px; border-radius:10px; box-shadow:4px 4px 0px ${AMBER_200}; overflow:hidden; display: flex; flex-direction: column; width: 100%; max-height: 100%; }
   .sidebar-h { font-family:'Playfair Display',serif; font-size:16px; font-weight:900; border-bottom:3px solid ${AMBER_400}; padding-bottom:6px; margin-bottom:12px; text-transform:uppercase; text-align:center; }
   .t-card { margin-bottom:12px; border-bottom:1px dashed ${AMBER_200}; padding-bottom:10px; }
   .t-user { font-family:'Outfit',sans-serif; font-size:9px; font-weight:800; color:${AMBER_500}; display:block; }
@@ -139,6 +139,19 @@ function estimateCardHeight(article, category, isContinuation = false) {
   const bodyH  = partyTagH + headlineH + summaryH + readMoreH;
   const innerH = Math.max(logoH, bodyH);
   return innerH + paddingV;
+}
+
+function estimateHeadlinesHeight(hNews) {
+  if (hNews.length === 0) return 0;
+  let maxH = 0;
+  for (let a of hNews) {
+    const chars = (a.headline || '').length + (a.summary || '').length;
+    const textLines = Math.ceil(chars / 45);
+    const textH = textLines * 18 + 50;
+    const cardH = (a.image ? 150 : 0) + textH;
+    if (cardH > maxH) maxH = cardH;
+  }
+  return maxH + 60;
 }
 
 // ─── Page slot allocator ──────────────────────────────────────────────────────
@@ -569,41 +582,46 @@ const PDFTemplate = forwardRef(({
   const nNews = articles.filter(a => a.category === 'national');
   const iNews = articles.filter(a => a.category === 'international');
 
-  // Page 1 fixed content: up to 2 political cards
-  const pNewsP1 = pNews.slice(0, 2);
-
-  // All remaining items flow across pages
-const flowItems = [
-  ...articles.filter(a => a.isCustomText).map(a => ({ ...a, sTitle: null, category: 'customText' })),
-  ...pNews.slice(2).map(a => ({ ...a, sTitle: null, category: 'political' })),    ...cNews.map(a  => ({ ...a, sTitle: 'जंगल राज 2.O',    category: 'civic'    })),
+  // All items flow across pages
+  const flowItems = [
+    ...articles.filter(a => a.isCustomText).map(a => ({ ...a, sTitle: null, category: 'customText' })),
+    ...pNews.map(a => ({ ...a, sTitle: 'सत्ता से जुड़ी खबरें', category: 'political' })),
+    ...cNews.map(a  => ({ ...a, sTitle: 'जंगल राज 2.O',    category: 'civic'    })),
     ...oNews.map(a  => ({ ...a, sTitle: 'विचार मंच',    category: 'opinion'  })),
     ...nNews.map(a  => ({ ...a, sTitle: 'देश की खबरें', category: 'national' })),
     ...iNews.map(a  => ({ ...a, sTitle: 'विदेश दर्पण',  category: 'international' })),
   ];
 
   // Estimate how much of Page 1 is consumed by fixed content
-  const headlinesH   = hNews.length > 0 ? TOP_HEADLINES_H + 20 : 0;
-  const polHdgH      = pNewsP1.length > 0 ? POLITICAL_SECTION_HDG_H : 0;
-  const polCardsH    = pNewsP1.reduce((s, a) => s + estimateCardHeight(a, 'political'), 0);
-  const p1Fixed      = MASTHEAD_H + headlinesH + polHdgH + polCardsH;
+  const headlinesH   = estimateHeadlinesHeight(hNews);
+  const p1Fixed      = MASTHEAD_H + headlinesH;
   const p1Available  = USABLE_HEIGHT_P1 - p1Fixed;
 
-  // Allocate flow items starting from leftover P1 space
-  const useP1Overflow = p1Available > 150;
+  const useP1Overflow = p1Available > 350;
   const startH = useP1Overflow ? p1Available : USABLE_HEIGHT_REST;
   const allocatedPages = allocatePages(flowItems, startH);
 
   const p1ExtraSlots  = useP1Overflow ? (allocatedPages[0]?.slots || []) : [];
   const dynamicPages  = useP1Overflow ? allocatedPages.slice(1) : allocatedPages;
 
-  // Distribute tweets: 7 per page
-  const TWEETS_PER_PAGE = 6; // Reduced from 7 to prevent footer overlap
-  const totalPages = 1 + dynamicPages.length;
-  const tweetsByPage = Array.from({ length: totalPages }, (_, i) =>
-    tweets.slice(i * TWEETS_PER_PAGE, (i + 1) * TWEETS_PER_PAGE)
-  );
+  const TWEETS_PER_PAGE = 6;
+  let p1Tweets = [];
+  let dynamicTweets = [];
+  if (useP1Overflow) {
+    p1Tweets = tweets.slice(0, TWEETS_PER_PAGE);
+    dynamicTweets = tweets.slice(TWEETS_PER_PAGE);
+  } else {
+    dynamicTweets = tweets;
+  }
 
-  const p1Tweets = tweetsByPage[0] || [];
+  const tweetPagesNeeded = Math.ceil(dynamicTweets.length / TWEETS_PER_PAGE);
+  while (dynamicPages.length < tweetPagesNeeded) {
+    dynamicPages.push({ slots: [] });
+  }
+
+  const tweetsByPage = Array.from({ length: dynamicPages.length }, (_, i) =>
+    dynamicTweets.slice(i * TWEETS_PER_PAGE, (i + 1) * TWEETS_PER_PAGE)
+  );
 
   return (
     <div ref={ref} className="mag-wrapper">
@@ -640,7 +658,7 @@ const flowItems = [
                       <div>
                         <div 
                           className={`headline-text ${interactive ? 'editable-text' : ''}`}
-                          style={{ fontSize:'12px', fontWeight:'bold', fontFamily:"'Playfair Display',serif", lineHeight:'1.35', marginBottom:'8px' }}
+                          style={{ fontSize:'12px', fontWeight:'bold', fontFamily:"'Playfair Display',serif", lineHeight:'1.35', marginBottom:'8px', wordBreak: 'break-word' }}
                           contentEditable={interactive}
                           suppressContentEditableWarning={true}
                           onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
@@ -650,7 +668,7 @@ const flowItems = [
                         {!a.image && a.summary && (
                           <div 
                             className={`summary-text ${interactive ? 'editable-text' : ''}`}
-                            style={{ fontSize:'9px', color:SLATE, lineHeight:'1.4', marginBottom:'8px' }}
+                            style={{ fontSize:'10px', color:SLATE, wordBreak: 'break-word' }}
                             contentEditable={interactive}
                             suppressContentEditableWarning={true}
                             onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
@@ -668,20 +686,10 @@ const flowItems = [
           </section>
         )}
 
-        {/* Political + Tweet sidebar + P1 overflow */}
-        <div style={{ display:'grid', gridTemplateColumns: p1Tweets.length > 0 ? '2.1fr 0.9fr' : '1fr', gap:'24px' }}>
-          <div>
-            {pNewsP1.length > 0 && (
-              <div style={{ display:'flex', alignItems:'center', gap:'12px', margin:'15px 0 8px' }}>
-                <h2 style={{ fontFamily:"'Noto Sans Devanagari','Playfair Display',serif", fontSize:'20px', fontWeight:700, whiteSpace:'nowrap' }}>
-                  सत्ता से जुड़ी खबरें
-                </h2>
-                <div style={{ flex:1, height:'1px', background:RULE }} />
-              </div>
-            )}
-            {pNewsP1.map((a, i) => <NewsCard key={i} article={a} category="political" interactive={interactive} onMove={onMoveArticle} onAdjustY={onAdjustY} onSetOffset={onSetOffset} onUpdateArticle={onUpdateArticle} onRemove={onRemoveArticle} />)}
-
-            {/* Extra flow content that fits in remaining P1 space */}
+        {/* Flow content + Tweet sidebar */}
+        <div style={{ display:'grid', gridTemplateColumns: p1Tweets.length > 0 ? 'minmax(0, 2.1fr) minmax(0, 0.9fr)' : '1fr', gap:'24px', flex:1, minHeight: 0 }}>
+          <div style={{ minWidth: 0 }}>
+            {/* Flow content that fits in remaining P1 space */}
             {p1ExtraSlots.map((slot, i) => {
               if (slot.type === 'sectionHeading') {
                 const off = headingOffsets[slot.sTitle] || { x: 0, y: 0 };
@@ -703,7 +711,11 @@ const flowItems = [
             })}
           </div>
 
-          {p1Tweets.length > 0 && <TweetSidebar tweets={p1Tweets} interactive={interactive} onAdjustY={onAdjustY} onUpdateTweetField={onUpdateTweetField} onRemoveTweet={onRemoveTweet} />}
+          {p1Tweets.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              <TweetSidebar tweets={p1Tweets} interactive={interactive} onAdjustY={onAdjustY} onUpdateTweetField={onUpdateTweetField} onRemoveTweet={onRemoveTweet} />
+            </div>
+          )}
         </div>
 
       </MasterPage>
@@ -711,11 +723,11 @@ const flowItems = [
       {/* ══════════════ DYNAMIC PAGES ══════════════ */}
       {dynamicPages.map((page, pIdx) => {
         const pgNum      = pIdx + 2;
-        const pageTweets = tweetsByPage[pgNum - 1] || [];
+        const pageTweets = tweetsByPage[pIdx] || [];
 
         return (
           <MasterPage key={pgNum} pgNum={pgNum} dateDisplay={dateDisplay} showMasthead={false}>
-            <div style={{ display:'grid', gridTemplateColumns: pageTweets.length > 0 ? '2.1fr 0.9fr' : '1fr', gap:'24px' }}>
+            <div style={{ display:'grid', gridTemplateColumns: pageTweets.length > 0 ? 'minmax(0, 2.1fr) minmax(0, 0.9fr)' : '1fr', gap:'24px', flex:1, minHeight: 0 }}>
               <div style={{ flex:1, minWidth:0 }}>
                 {page.slots.map((slot, sIdx) => {
                   if (slot.type === 'sectionHeading') {
@@ -747,7 +759,11 @@ const flowItems = [
                 })}
               </div>
 
-              {pageTweets.length > 0 && <TweetSidebar tweets={pageTweets} interactive={interactive} onAdjustY={onAdjustY} onSetOffset={onSetOffset} onUpdateTweetField={onUpdateTweetField} onRemoveTweet={onRemoveTweet} />}
+              {pageTweets.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  <TweetSidebar tweets={pageTweets} interactive={interactive} onAdjustY={onAdjustY} onSetOffset={onSetOffset} onUpdateTweetField={onUpdateTweetField} onRemoveTweet={onRemoveTweet} />
+                </div>
+              )}
             </div>
           </MasterPage>
         );

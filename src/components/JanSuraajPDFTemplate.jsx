@@ -101,14 +101,14 @@ const css = `
   .news-card { display:flex; gap:15px; padding:15px 0; border-bottom:1px solid ${RULE}; }
   .news-card-logo { width:55px; height:55px; object-fit:contain; flex-shrink:0; }
   .news-card-body { flex:1; min-width:0; }
-  .news-card-h { font-family:'Playfair Display',serif; font-size:16px; font-weight:700; margin-bottom:6px; line-height:1.35; color:${INK}; }
-  .news-card-p { font-size:11px; line-height:1.6; color:${SLATE}; }
+  .news-card-h { font-family:'Playfair Display',serif; font-size:16px; font-weight:700; margin-bottom:6px; line-height:1.35; color:${INK}; word-break: break-word; }
+  .news-card-p { font-size:11px; line-height:1.6; color:${SLATE}; word-break: break-word; }
   .read-more { font-family:'Outfit',sans-serif; font-size:9.5px; font-weight:800; color:${INK}; text-decoration:none; border-bottom:3px solid ${AMBER_400}; display:inline-block; margin-top:10px; text-transform:uppercase; }
 
   .cont-label { font-size:9px; color:${SLATE}; font-style:italic; margin-bottom:4px; }
-  .cont-headline { font-size:13px; font-weight:700; font-family:'Playfair Display',serif; color:${INK}; margin-bottom:6px; line-height:1.35; }
+  .cont-headline { font-size:13px; font-weight:700; font-family:'Playfair Display',serif; color:${INK}; margin-bottom:6px; line-height:1.35; word-break: break-word; }
 
-  .tweet-sidebar { background:#fff; border:4px solid ${AMBER_400}; padding:15px; border-radius:10px; box-shadow:4px 4px 0px ${AMBER_200}; overflow:hidden; display: flex; flex-direction: column; width: 100%; max-width: 100%; margin-bottom: 20px; }
+  .tweet-sidebar { background:#fff; border:4px solid ${AMBER_400}; padding:15px; border-radius:10px; box-shadow:4px 4px 0px ${AMBER_200}; overflow:hidden; display: flex; flex-direction: column; width: 100%; max-height: 100%; margin-bottom: 20px; }
   .sidebar-h { font-family:'Playfair Display',serif; font-size:16px; font-weight:900; border-bottom:3px solid ${AMBER_400}; padding-bottom:6px; margin-bottom:12px; text-transform:uppercase; text-align:center; }
   .t-card { margin-bottom:12px; border-bottom:1px dashed ${AMBER_200}; padding-bottom:10px; width: 100%; }
   .t-user { font-family:'Outfit',sans-serif; font-size:9px; font-weight:800; color:${AMBER_500}; display:block; }
@@ -139,6 +139,19 @@ function estimateCardHeight(article, category, isContinuation = false) {
   const bodyH = partyTagH + headlineH + summaryH + readMoreH;
   const innerH = Math.max(logoH, bodyH);
   return innerH + paddingV;
+}
+
+function estimateHeadlinesHeight(hNews) {
+  if (hNews.length === 0) return 0;
+  let maxH = 0;
+  for (let a of hNews) {
+    const chars = (a.headline || '').length + (a.summary || '').length;
+    const textLines = Math.ceil(chars / 45);
+    const textH = textLines * 18 + 50;
+    const cardH = (a.image ? 150 : 0) + textH;
+    if (cardH > maxH) maxH = cardH;
+  }
+  return maxH + 60;
 }
 
 // ─── Page slot allocator ──────────────────────────────────────────────────────
@@ -505,20 +518,34 @@ const JanSuraajPDFTemplate = forwardRef(({
     ...articles.filter(a => a.category === 'jungleraaj').map(a => ({ ...a, sTitle: '  जंगलराज 2.0', category: 'jungleraaj' })),
   ];
 
-  const headlinesH = hNews.length > 0 ? TOP_HEADLINES_H : 0;
+  const headlinesH = estimateHeadlinesHeight(hNews);
   const p1Fixed = MASTHEAD_H + headlinesH;
   const p1Available = USABLE_HEIGHT_P1 - p1Fixed;
 
-  const useP1Overflow = p1Available > 150;
+  const useP1Overflow = p1Available > 350;
   const startH = useP1Overflow ? p1Available : USABLE_HEIGHT_REST;
   const allocatedPages = allocatePages(flowItems, startH);
 
   const p1ExtraSlots = useP1Overflow ? (allocatedPages[0]?.slots || []) : [];
   const dynamicPages = useP1Overflow ? allocatedPages.slice(1) : allocatedPages;
 
-  const totalPages = 1 + dynamicPages.length;
-  const p1Tweets = tweets;
-  const tweetsByPage = [tweets];
+  let p1Tweets = [];
+  let dynamicTweets = [];
+  if (useP1Overflow) {
+    p1Tweets = tweets.slice(0, TWEETS_PER_PAGE);
+    dynamicTweets = tweets.slice(TWEETS_PER_PAGE);
+  } else {
+    dynamicTweets = tweets;
+  }
+
+  const tweetPagesNeeded = Math.ceil(dynamicTweets.length / TWEETS_PER_PAGE);
+  while (dynamicPages.length < tweetPagesNeeded) {
+    dynamicPages.push({ slots: [] });
+  }
+
+  const tweetsByPage = Array.from({ length: dynamicPages.length }, (_, i) =>
+    dynamicTweets.slice(i * TWEETS_PER_PAGE, (i + 1) * TWEETS_PER_PAGE)
+  );
 
   return (
     <div ref={ref} className="mag-wrapper">
@@ -552,7 +579,7 @@ const JanSuraajPDFTemplate = forwardRef(({
                     <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingTop: a.image ? '10px' : '16px' }}>
                       <div 
                         className={`news-card-h ${interactive ? 'editable-text' : ''}`}
-                        style={{ fontSize: '13px', lineHeight: '1.4', marginBottom: '8px', color: INK }}
+                        style={{ fontSize: '13px', lineHeight: '1.4', marginBottom: '8px', color: INK, wordBreak: 'break-word' }}
                         contentEditable={interactive}
                         suppressContentEditableWarning={true}
                         onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
@@ -561,7 +588,7 @@ const JanSuraajPDFTemplate = forwardRef(({
                       </div>
                       <div 
                         className={`news-card-p ${interactive ? 'editable-text' : ''}`}
-                        style={{ fontSize: '10px', color: SLATE, height: '42px', overflow: 'hidden' }}
+                        style={{ fontSize: '10px', color: SLATE, height: '42px', overflow: 'hidden', wordBreak: 'break-word' }}
                         contentEditable={interactive}
                         suppressContentEditableWarning={true}
                         onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
@@ -576,7 +603,7 @@ const JanSuraajPDFTemplate = forwardRef(({
           </section>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: p1Tweets.length > 0 ? 'minmax(0, 2.1fr) minmax(0, 0.9fr)' : '1fr', gap: '24px', flex: 1 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: p1Tweets.length > 0 ? 'minmax(0, 2.1fr) minmax(0, 0.9fr)' : '1fr', gap: '24px', flex: 1, minHeight: 0 }}>
           <div style={{ minWidth: 0 }}>
             {p1ExtraSlots.map((slot, i) => {
               if (slot.type === 'sectionHeading') {
@@ -595,7 +622,7 @@ const JanSuraajPDFTemplate = forwardRef(({
             })}
           </div>
           {p1Tweets.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <TweetSidebar
                 tweets={p1Tweets}
                 interactive={interactive}
@@ -611,10 +638,10 @@ const JanSuraajPDFTemplate = forwardRef(({
 
       {dynamicPages.map((page, pIdx) => {
         const pgNum = pIdx + 2;
-        const pageTweets = tweetsByPage[pgNum - 1] || [];
+        const pageTweets = tweetsByPage[pIdx] || [];
         return (
           <MasterPage key={pgNum} pgNum={pgNum} dateDisplay={dateDisplay} showMasthead={false} interactive={interactive}>
-            <div style={{ display: 'grid', gridTemplateColumns: pageTweets.length > 0 ? 'minmax(0, 2.1fr) minmax(0, 0.9fr)' : '1fr', gap: '24px', flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: pageTweets.length > 0 ? 'minmax(0, 2.1fr) minmax(0, 0.9fr)' : '1fr', gap: '24px', flex: 1, minHeight: 0 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {page.slots.map((slot, sIdx) => {
                   if (slot.type === 'sectionHeading') {
@@ -633,7 +660,7 @@ const JanSuraajPDFTemplate = forwardRef(({
                 })}
               </div>
               {pageTweets.length > 0 && (
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                   <TweetSidebar
                     tweets={pageTweets}
                     interactive={interactive}
