@@ -765,3 +765,197 @@ body {
   .date-input input { text-align: center; }
   .btn-primary { width: 100%; }
 }
+
+/* ─── PREVIEW OVERLAY ─── */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.95);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  padding: 20px;
+}
+
+.preview-modal {
+  width: 100%;
+  max-width: 1200px;
+  height: 95vh;
+  background: var(--paper);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.preview-header {
+  padding: 1.2rem 2rem;
+  background: var(--ink);
+  color: white;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-header h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.4rem;
+}
+
+.preview-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.preview-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  background: #cbd5e1; /* Slate 300 background for the template container */
+}
+
+.preview-instructions {
+  background: var(--amber-ll);
+  border-left: 4px solid var(--amber);
+  padding: 1rem;
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: 0.9rem;
+}
+
+.template-container {
+  display: flex;
+  justify-content: center;
+  padding-bottom: 50px;
+}
+
+.interactive-template {
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  transform-origin: top center;
+  zoom: 0.85; /* Scale down for better viewing on screen */
+}
+
+@media (max-width: 1024px) {
+  .interactive-template {
+    zoom: 0.6;
+  }
+}
+
+/* ─── CANVAS CONTROLS ─── */
+.canvas-control {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  display: flex;
+  flex-direction: row;
+  gap: 5px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  background: white;
+  padding: 5px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 1000;
+  border: 1.5px solid var(--amber);
+}
+
+.canvas-control.dragging {
+  border-color: #0ea5e9;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+  transform: scale(1.05);
+}
+
+.drag-handle {
+  background: var(--ink);
+  color: var(--amber);
+  font-weight: bold;
+}
+
+.drag-handle:active {
+  cursor: grabbing !important;
+}
+
+.news-card-wrapper:hover .canvas-control,
+.headline-wrapper:hover .canvas-control,
+.tweet-wrapper:hover .canvas-control,
+.section-heading-wrapper:hover .canvas-control {
+  opacity: 1;
+}
+
+.control-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  background: var(--amber);
+  border-color: var(--amber);
+}
+
+.offset-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  color: white;
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.offset-btn {
+  background: transparent;
+  border: none;
+  color: var(--amber);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: bold;
+}
+
+/* Helper wrappers for interactive mode */
+.news-card-wrapper, .headline-wrapper, .tweet-wrapper {
+  position: relative;
+  transition: transform 0.2s;
+  padding: 4px;
+}
+
+.interactive-mode:hover {
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.editable-text:focus {
+  outline: 2px solid var(--amber);
+  background: white;
+  padding: 2px;
+}
+
+/* ─── INTERACTIVE PAGE OVERFLOW ─── */
+.mag-root.interactive-page {
+  overflow: visible !important;
+}
+
+.mag-root.interactive-page .mag-body {
+  overflow: visible !important;
+}
+
+.mag-root.interactive-page .mag-page {
+  overflow: visible !important;
+}

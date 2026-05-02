@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import html2pdf from 'html2pdf.js';
 import { formatDateDisplay, fetchArticle } from './utils/extractor';
 import JanSuraajPDFTemplate from './components/JanSuraajPDFTemplate';
-import { Link } from 'react-router-dom';
+
 
 const PARTY_LOGOS = {
   'jan-suraaj': new URL('/logo.png', window.location.origin).href,
@@ -13,38 +14,140 @@ const PARTY_LOGOS = {
   'other': 'https://cdn-icons-png.flaticon.com/512/2991/2991279.png'
 };
 
-const SECTION_LOGOS = {};
+const SECTION_LOGOS = {
+  'national': new URL('/national.jpeg', window.location.origin).href,
+  'international': new URL('/international.jpeg', window.location.origin).href,
+  'opinion': new URL('/opinion.jpeg', window.location.origin).href,
+  'civic': new URL('/civic.jpeg', window.location.origin).href,
+  'jungleraaj': new URL('/civic.jpeg', window.location.origin).href, 
+};
 
 const TRENDING_TWEETS = [
 ];
 
 const SECTION_META = {
-  headlines: { emoji: '🗞️', label: 'Jan Suraaj News', accent: '#f59e0b', note: 'Top 3 cards (1 Full + 2 Half)' },
-  political: { emoji: '⚖️', label: 'Jan Suraaj Samachar', accent: '#fbbf24', note: 'Political updates' },
+  headlines: { emoji: '🗞️', label: 'Top Headlines', accent: '#f59e0b', note: 'Top 2 cards' },
+  political: { emoji: '⚖️', label: 'Jan Suraaj Highlights', accent: '#fbbf24', note: 'Political updates' },
+  jungleraaj: { emoji: '🚨', label: 'Jungle Raj 2.0', accent: '#ef4444', note: 'Critical news' },
 };
 
 function JanSuraajApp() {
+  const navigate = useNavigate();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [articles, setArticles] = useState([]);
-  const [tweets, setTweets] = useState(TRENDING_TWEETS);
+  
+  // Persistence logic
+  const [articles, setArticles] = useState(() => {
+    const saved = localStorage.getItem('js-scan-articles');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [tweets, setTweets] = useState(() => {
+    const saved = localStorage.getItem('js-scan-tweets');
+    return saved ? JSON.parse(saved) : TRENDING_TWEETS;
+  });
+  const [headingOffsets, setHeadingOffsets] = useState(() => {
+    const saved = localStorage.getItem('js-scan-heading-offsets');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  useEffect(() => {
+    localStorage.setItem('js-scan-articles', JSON.stringify(articles));
+  }, [articles]);
+
+  useEffect(() => {
+    localStorage.setItem('js-scan-tweets', JSON.stringify(tweets));
+  }, [tweets]);
+
+  useEffect(() => {
+    localStorage.setItem('js-scan-heading-offsets', JSON.stringify(headingOffsets));
+  }, [headingOffsets]);
+
+  const clearAll = () => {
+    if (window.confirm('Are you sure you want to clear all Jan Suraaj data?')) {
+      setArticles([]);
+      setTweets(TRENDING_TWEETS);
+      setHeadingOffsets({});
+      localStorage.removeItem('js-scan-articles');
+      localStorage.removeItem('js-scan-tweets');
+      localStorage.removeItem('js-scan-heading-offsets');
+    }
+  };
   const [isGenerating, setIsGenerating] = useState(false);
   const [fetchingIds, setFetchingIds] = useState([]);
+  const [showPreview, setShowPreview] = useState(false);
   const pdfRef = useRef(null);
 
   const addArticle = (category) => {
     setArticles(prev => [...prev, {
       id: Date.now(),
-      category,
-      headline: '',
+      category: category || 'headlines',
+      headline: category === 'customText' ? 'Edit this text' : '',
       summary: '',
       url: '',
       image: '',
-      party: category === 'political' ? 'jan-suraaj' : ''
+      party: category === 'political' ? 'jan-suraaj' : '',
+      xOffset: 0,
+      yOffset: 0,
+      isCustomText: category === 'customText'
     }]);
   };
 
   const updateArticle = (id, key, val) => {
     setArticles(prev => prev.map(a => a.id === id ? { ...a, [key]: val } : a));
+  };
+
+  const moveArticle = (id, direction) => {
+    setArticles(prev => {
+      const idx = prev.findIndex(a => a.id === id);
+      if (idx === -1) return prev;
+      const newArticles = [...prev];
+      const category = newArticles[idx].category;
+
+      // Find neighboring article in the same category
+      let swapIdx = -1;
+      if (direction === 'up') {
+        for (let i = idx - 1; i >= 0; i--) {
+          if (newArticles[i].category === category) {
+            swapIdx = i;
+            break;
+          }
+        }
+      } else {
+        for (let i = idx + 1; i < newArticles.length; i++) {
+          if (newArticles[i].category === category) {
+            swapIdx = i;
+            break;
+          }
+        }
+      }
+
+      if (swapIdx !== -1) {
+        [newArticles[idx], newArticles[swapIdx]] = [newArticles[swapIdx], newArticles[idx]];
+      }
+      return newArticles;
+    });
+  };
+
+  const setOffset = (id, x, y, isTweet = false, isHeading = false) => {
+    if (isHeading) {
+      setHeadingOffsets(prev => ({ ...prev, [id]: { x, y } }));
+    } else if (isTweet) {
+      setTweets(prev => prev.map(t => t.id === id ? { ...t, xOffset: x, yOffset: y } : t));
+    } else {
+      setArticles(prev => prev.map(a => a.id === id ? { ...a, xOffset: x, yOffset: y } : a));
+    }
+  };
+
+  const adjustYOffset = (id, amount, isTweet = false, isHeading = false) => {
+    if (isHeading) {
+      setHeadingOffsets(prev => {
+        const cur = prev[id] || { x: 0, y: 0 };
+        return { ...prev, [id]: { ...cur, y: cur.y + amount } };
+      });
+    } else if (isTweet) {
+      setTweets(prev => prev.map(t => t.id === id ? { ...t, yOffset: (t.yOffset || 0) + amount } : t));
+    } else {
+      setArticles(prev => prev.map(a => a.id === id ? { ...a, yOffset: (a.yOffset || 0) + amount } : a));
+    }
   };
 
   const removeArticle = (id) => {
@@ -69,7 +172,7 @@ function JanSuraajApp() {
   };
 
   const addTweet = () => {
-    setTweets(prev => [...prev, { id: Date.now(), user: '@UserHandle', text: '', time: 'Now' }]);
+    setTweets(prev => [...prev, { id: Date.now(), user: '@UserHandle', text: '', time: 'Now', xOffset: 0, yOffset: 0 }]);
   };
 
   const removeTweet = (id) => {
@@ -128,9 +231,9 @@ function JanSuraajApp() {
                     <div style={{ fontWeight: '800', fontSize: '14px', color: '#f59e0b' }}>Jan Suraaj </div>
                   </div>
                 )}
-                {['civic', 'national', 'international', 'opinion'].includes(category) && (
-                  <img src={SECTION_LOGOS[category]} alt={category} crossOrigin="anonymous" style={{ width: 70, height: 70, objectFit: 'contain' }} />
-                )}
+                 {category === 'jungleraaj' && (
+                   <img src={SECTION_LOGOS[category]} alt={category} crossOrigin="anonymous" style={{ width: 70, height: 70, objectFit: 'contain' }} />
+                 )}
                 <button className="btn-del" onClick={() => removeArticle(art.id)}>×</button>
               </div>
 
@@ -225,18 +328,65 @@ function JanSuraajApp() {
             <label>Edition Date</label>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
-          <Link to="/" className="btn-secondary" style={{ marginRight: '10px', textDecoration: 'none', color: '#64748b', fontSize: '12px' }}>
-            ← Back to Media Scan
-          </Link>
+          <button className="btn-secondary" onClick={clearAll} style={{ marginRight: '10px', background: '#ef4444', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer' }}>
+            🗑️ Clear All
+          </button>
+          <button className="btn-secondary" onClick={() => navigate('/')} style={{ marginRight: '10px', background: '#334155', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            ← Main Scan
+          </button>
+          <button className="btn-secondary" onClick={() => setShowPreview(true)} style={{ marginRight: '10px', background: '#fbbf24', color: '#1c1917', border: 'none', padding: '8px 16px', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+            👁️ Live Preview
+          </button>
           <button className="btn-primary" onClick={handleGeneratePDF} style={{ background: '#f59e0b' }}>
             ⚡ Publish PDF
           </button>
         </div>
       </header>
 
+      {showPreview && (
+        <div className="preview-overlay">
+          <div className="preview-modal">
+            <header className="preview-header">
+              <h2>Interactive Layout Preview</h2>
+              <div className="preview-actions">
+                <button className="btn-add" onClick={() => addArticle('customText')} style={{ border: '1px solid #fbbf24', color: '#fbbf24' }}>+ Add Simple Text</button>
+                <button className="btn-add" onClick={() => setArticles(prev => [...prev, { id: Date.now(), isPageBreak: true, category: 'political' }])} style={{ border: '1px solid #10b981', color: '#10b981' }}>+ Add New Page</button>
+                <button className="btn-secondary" onClick={() => setShowPreview(false)} style={{ background: '#475569', color: '#fff', border: 'none', padding: '8px 20px', borderRadius: '6px', cursor: 'pointer', fontWeight: '600' }}>Close</button>
+                <button className="btn-primary" onClick={() => { handleGeneratePDF(); setShowPreview(false); }}>Download PDF</button>
+              </div>
+            </header>
+            <div className="preview-body">
+              <div className="preview-instructions">
+                <p>💡 <strong>Canvas Mode:</strong> Use the arrows to reorder stories or adjust vertical spacing (Up/Down) for each item.</p>
+              </div>
+              <div className="template-container">
+                {/* This is the interactive version of the template */}
+                <div className="interactive-template">
+                  <JanSuraajPDFTemplate
+                    date={date}
+                    articles={articles}
+                    tweets={tweets}
+                    interactive={true}
+                    onMoveArticle={moveArticle}
+                    onAdjustY={adjustYOffset}
+                    onSetOffset={setOffset}
+                    onUpdateTweetField={updateTweetField}
+                    onRemoveTweet={removeTweet}
+                    onAddTweet={addTweet}
+                    onUpdateArticle={updateArticle}
+                    onRemoveArticle={removeArticle}
+                    headingOffsets={headingOffsets}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="app-main-layout">
         <main className="builder-main">
-          {['headlines', 'political'].map(renderSection)}
+          {['headlines', 'political', 'jungleraaj'].map(renderSection)}
         </main>
 
         <aside className="trending-sidebar">
@@ -304,7 +454,7 @@ function JanSuraajApp() {
       </div>
 
       <div style={{ visibility: 'hidden', position: 'absolute', top: '-9999px', left: 0 }}>
-        <JanSuraajPDFTemplate date={date} articles={articles} tweets={tweets} ref={pdfRef} />
+        <JanSuraajPDFTemplate date={date} articles={articles} tweets={tweets} ref={pdfRef} headingOffsets={headingOffsets} />
       </div>
     </div>
   );

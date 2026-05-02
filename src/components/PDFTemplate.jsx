@@ -172,9 +172,15 @@ function allocatePages(flowItems, firstPageAvailableH) {
 
   for (let i = 0; i < flowItems.length; i++) {
     const a = flowItems[i];
+    if (a.isPageBreak) {
+      addSlot({ type: 'pageBreak', id: a.id }, 40);
+      commitPage();
+      prevSTitle = null;
+      continue;
+    }
 
     // ── Section heading ─────────────────────────────────────────────
-    if (a.sTitle !== prevSTitle) {
+    if (a.sTitle !== prevSTitle && a.sTitle) {
       prevSTitle = a.sTitle;
       const hH = SECTION_HEADING_H;
       // Need heading + at least ~80px for one partial card below it
@@ -256,8 +262,71 @@ function allocatePages(flowItems, firstPageAvailableH) {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
+const CanvasControl = ({ id, onMove, onAdjustY, onSetOffset, isTweet = false, xOffset = 0, yOffset = 0, onRemove, targetRef }) => {
+  const [isDragging, setIsDragging] = React.useState(false);
+  const startMouse = React.useRef({ x: 0, y: 0 });
+  const startOffset = React.useRef({ x: 0, y: 0 });
 
-const SectionHeading = ({ sTitle }) => {
+  const handleDragStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    startMouse.current = { x: e.clientX, y: e.clientY };
+    startOffset.current = { x: xOffset || 0, y: yOffset || 0 };
+    
+    const onMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startMouse.current.x;
+      const deltaY = moveEvent.clientY - startMouse.current.y;
+      const newX = startOffset.current.x + deltaX;
+      const newY = startOffset.current.y + deltaY;
+      
+      if (targetRef && targetRef.current) {
+        targetRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+        targetRef.current.style.zIndex = '9999';
+      }
+    };
+
+    const onMouseUp = (upEvent) => {
+      const deltaX = upEvent.clientX - startMouse.current.x;
+      const deltaY = upEvent.clientY - startMouse.current.y;
+      
+      setIsDragging(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      
+      onSetOffset(id, startOffset.current.x + deltaX, startOffset.current.y + deltaY, isTweet);
+      if (targetRef && targetRef.current) {
+        targetRef.current.style.zIndex = '';
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
+  return (
+    <div className={`canvas-control ${isDragging ? 'dragging' : ''}`}>
+      <div 
+        className="control-btn drag-handle" 
+        onMouseDown={handleDragStart}
+        style={{ cursor: 'move', background: INK, color: AMBER_400, fontWeight: 'bold' }}
+        title="Drag to move anywhere"
+      >
+        ✥
+      </div>
+      {onMove && <button className="control-btn" onClick={(e) => { e.stopPropagation(); onMove(id, 'up'); }} title="Move Up">↑</button>}
+      {onMove && <button className="control-btn" onClick={(e) => { e.stopPropagation(); onMove(id, 'down'); }} title="Move Down">↓</button>}
+      <div className="offset-control">
+        <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(id, -5, isTweet); }}>-</button>
+        <span>{yOffset || 0}px</span>
+        <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(id, 5, isTweet); }}>+</button>
+      </div>
+      <button className="control-btn" onClick={(e) => { e.stopPropagation(); onRemove(id); }} title="Remove" style={{ color: '#ef4444' }}>×</button>
+    </div>
+  );
+};
+
+const SectionHeading = ({ sTitle, interactive, onAdjustY, onSetOffset, xOffset = 0, yOffset = 0 }) => {
   const logoMap = {
     'जंगल राज 2.O':    SECTION_LOGOS.civic,
     'विचार मंच':    SECTION_LOGOS.opinion,
@@ -265,8 +334,33 @@ const SectionHeading = ({ sTitle }) => {
     'विदेश दर्पण':  SECTION_LOGOS.international,
   };
   const logo = logoMap[sTitle];
+  const headRef = React.useRef(null);
   return (
-    <div style={{ display:'flex', alignItems:'center', gap:'12px', margin:'15px 0 8px' }}>
+    <div 
+      ref={headRef}
+      className={`section-heading-wrapper ${interactive ? 'interactive-mode' : ''}`}
+      style={{ 
+        display:'flex', 
+        alignItems:'center', 
+        gap:'12px', 
+        margin:'15px 0 8px',
+        position: 'relative',
+        transform: `translate(${xOffset}px, ${yOffset}px)`,
+        marginBottom: `${yOffset < 0 ? 15 : (15 + yOffset)}px`
+      }}
+    >
+      {interactive && (
+        <CanvasControl 
+          id={`heading-${sTitle}`} 
+          onMove={() => {}} 
+          onAdjustY={(id, amt) => onAdjustY(sTitle, amt, false, true)} 
+          onSetOffset={(id, x, y) => onSetOffset(sTitle, x, y, false, true)} 
+          xOffset={xOffset} 
+          yOffset={yOffset} 
+          onRemove={() => {}} 
+          targetRef={headRef} 
+        />
+      )}
       {logo && <img src={logo} style={{ width:45, height:45, objectFit:'contain', flexShrink:0 }} crossOrigin="anonymous" alt="" />}
       <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'20px', whiteSpace:'nowrap' }}>{sTitle}</h2>
       <div style={{ flex:1, height:'1px', background:RULE }} />
@@ -274,52 +368,159 @@ const SectionHeading = ({ sTitle }) => {
   );
 };
 
-const NewsCard = ({ article: a, category, isContinuation = false }) => (
-  <div className="news-card">
-    <div style={{ display:'flex', gap:'15px', width:'100%' }}>
-      {/* Show logo only on fresh cards, not continuations */}
-      {category === 'political' && !isContinuation && (
-        <img src={a.customLogo || PARTY_LOGOS[a.party]} className="news-card-logo" crossOrigin="anonymous" alt="" />
-      )}
-      <div className="news-card-body">
-        {/* Party tag — fresh cards only */}
-        {category === 'political' && a.party && !isContinuation && (
-          <div className="party-tag">
-            {PARTY_NAMES[a.party] || a.party}
+const NewsCard = ({ article: a, category, isContinuation = false, interactive, onMove, onAdjustY, onSetOffset, onUpdateArticle, onRemove }) => {
+  const cardRef = React.useRef(null);
+  if (a.isCustomText) {
+    return (
+      <div ref={cardRef} className={`news-card-wrapper ${interactive ? 'interactive-mode' : ''}`} style={{ transform: `translate(${a.xOffset || 0}px, ${a.yOffset || 0}px)`, marginBottom: `${(a.yOffset || 0) < 0 ? 0 : (a.yOffset || 0)}px` }}>
+        {interactive && <CanvasControl id={a.id} onMove={onMove} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={a.xOffset} yOffset={a.yOffset} onRemove={onRemove} targetRef={cardRef} />}
+        <div className="custom-text-box" style={{ padding: '10px', background: 'rgba(251, 191, 36, 0.1)', border: '1px dashed #fbbf24', borderRadius: '4px' }}>
+          <div 
+            className={`news-card-p ${interactive ? 'editable-text' : ''}`}
+            style={{ fontSize: '12px', color: INK, minHeight: '20px' }}
+            contentEditable={interactive}
+            suppressContentEditableWarning={true}
+            onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
+          >
+            {a.headline}
           </div>
-        )}
-        {/* Continuation label */}
-        {isContinuation && (
-          <div className="cont-label">↳ {a.headline} (continued)</div>
-        )}
-        {/* Headline — fresh cards only */}
-        {!isContinuation && (
-          <div className="news-card-h">{a.headline}</div>
-        )}
-        <div className="news-card-p">{a.summary}</div>
-        <a href={a.url} className="read-more">Read More →</a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={cardRef} className={`news-card-wrapper ${interactive ? 'interactive-mode' : ''}`} style={{ transform: `translate(${a.xOffset || 0}px, ${a.yOffset || 0}px)`, marginBottom: `${(a.yOffset || 0) < 0 ? 0 : (a.yOffset || 0)}px` }}>
+      {interactive && <CanvasControl id={a.id} onMove={onMove} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={a.xOffset} yOffset={a.yOffset} onRemove={onRemove} targetRef={cardRef} />}
+      <div className="news-card">
+        <div style={{ display:'flex', gap:'15px', width:'100%' }}>
+          {/* Show logo only on fresh cards, not continuations */}
+          {category === 'political' && !isContinuation && (
+            <img src={a.customLogo || PARTY_LOGOS[a.party]} className="news-card-logo" crossOrigin="anonymous" alt="" />
+          )}
+          <div className="news-card-body">
+            {/* Party tag — fresh cards only */}
+            {category === 'political' && a.party && !isContinuation && (
+              <div className="party-tag">
+                {PARTY_NAMES[a.party] || a.party}
+              </div>
+            )}
+            {/* Continuation label */}
+            {isContinuation && (
+              <div className="cont-label">↳ {a.headline} (continued)</div>
+            )}
+            {/* Headline — fresh cards only */}
+            {!isContinuation && (
+              <div 
+                className={`news-card-h ${interactive ? 'editable-text' : ''}`}
+                contentEditable={interactive}
+                suppressContentEditableWarning={true}
+                onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
+              >
+                {a.headline}
+              </div>
+            )}
+            <div 
+              className={`news-card-p ${interactive ? 'editable-text' : ''}`}
+              contentEditable={interactive}
+              suppressContentEditableWarning={true}
+              onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
+            >
+              {a.summary}
+            </div>
+            <a href={a.url} className="read-more">Read More →</a>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-const TweetSidebar = ({ tweets }) => (
-  <div className="tweet-sidebar">
-    <div className="sidebar-h">Twitter Trendings</div>
-    {tweets.map((t, i) => (
-      <div key={i} className="t-card">
+const TweetCard = ({ t, interactive, onAdjustY, onSetOffset, onUpdateTweetField, onRemoveTweet }) => {
+  const tweetRef = React.useRef(null);
+  return (
+    <div ref={tweetRef} className="tweet-wrapper" style={{ transform: `translate(${t.xOffset || 0}px, ${t.yOffset || 0}px)`, marginBottom: `${(t.yOffset || 0) < 0 ? 0 : (t.yOffset || 0)}px` }}>
+      {interactive && (
+         <div className="canvas-control" style={{ left: 'auto', right: '-10px', top: '0' }}>
+            <div className="offset-control">
+              <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(t.id, -5, true); }}>-</button>
+              <span>{t.yOffset || 0}px</span>
+              <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(t.id, 5, true); }}>+</button>
+            </div>
+            <button className="control-btn" onClick={(e) => { e.stopPropagation(); onRemoveTweet(t.id); }} title="Remove" style={{ color: '#ef4444' }}>×</button>
+            <div 
+              className="control-btn drag-handle" 
+              onMouseDown={(e) => {
+                e.preventDefault();
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const initialX = t.xOffset || 0;
+                const initialY = t.yOffset || 0;
+                
+                const onMouseMove = (m) => {
+                  const dx = m.clientX - startX;
+                  const dy = m.clientY - startY;
+                  if (tweetRef.current) {
+                    tweetRef.current.style.transform = `translate(${initialX + dx}px, ${initialY + dy}px)`;
+                  }
+                };
+                const onMouseUp = (m) => {
+                  window.removeEventListener('mousemove', onMouseMove);
+                  window.removeEventListener('mouseup', onMouseUp);
+                  onSetOffset(t.id, initialX + (m.clientX - startX), initialY + (m.clientY - startY), true);
+                };
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+              }}
+              style={{ cursor: 'move', background: INK, color: AMBER_400 }}
+            >✥</div>
+         </div>
+      )}
+      <div className="t-card">
         {t.image && (
           <img src={t.image} style={{ width:'100%', height:60, objectFit:'cover', borderRadius:4, marginBottom:8 }} crossOrigin="anonymous" alt="" />
         )}
-        <span className="t-user">{t.user}</span>
-        <p style={{ fontSize:'9px', fontStyle:'italic' }}>"{t.text}"</p>
+        <span 
+          className={`t-user ${interactive ? 'editable-text' : ''}`}
+          contentEditable={interactive}
+          suppressContentEditableWarning={true}
+          onBlur={(e) => onUpdateTweetField(t.id, 'user', e.target.innerText)}
+        >
+          {t.user}
+        </span>
+        <p 
+          className={`t-text ${interactive ? 'editable-text' : ''}`}
+          style={{ fontSize:'9px', fontStyle:'italic' }}
+          contentEditable={interactive}
+          suppressContentEditableWarning={true}
+          onBlur={(e) => onUpdateTweetField(t.id, 'text', e.target.innerText)}
+        >
+          "{t.text}"
+        </p>
       </div>
+    </div>
+  );
+};
+
+const TweetSidebar = ({ tweets, interactive, onAdjustY, onSetOffset, onUpdateTweetField, onRemoveTweet }) => (
+  <div className={`tweet-sidebar ${interactive ? 'interactive-mode' : ''}`}>
+    <div className="sidebar-h">Twitter Trendings</div>
+    {tweets.map((t, i) => (
+      <TweetCard 
+        key={i} 
+        t={t} 
+        interactive={interactive} 
+        onAdjustY={onAdjustY} 
+        onSetOffset={onSetOffset} 
+        onUpdateTweetField={onUpdateTweetField} 
+        onRemoveTweet={onRemoveTweet} 
+      />
     ))}
   </div>
 );
 
-const MasterPage = ({ children, pgNum, dateDisplay, showMasthead }) => (
-  <div className={`mag-root${pgNum > 1 ? ' page-break' : ''}`}>
+const MasterPage = ({ children, pgNum, dateDisplay, showMasthead, interactive }) => (
+  <div className={`mag-root${pgNum > 1 ? ' page-break' : ''} ${interactive ? 'interactive-page' : ''}`}>
     <div className="tri-tl-outer" /><div className="tri-tl-inner" />
     <div className="tri-br-outer" /><div className="tri-br-inner" />
 
@@ -354,7 +555,11 @@ const MasterPage = ({ children, pgNum, dateDisplay, showMasthead }) => (
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
+const PDFTemplate = forwardRef(({ 
+  date, articles, tweets, interactive = false,
+  onMoveArticle, onAdjustY, onSetOffset, onUpdateArticle, onRemoveArticle, onUpdateTweetField, onRemoveTweet,
+  headingOffsets = {}
+}, ref) => {
   const dateDisplay = formatDateDisplay(date);
 
   const hNews = articles.filter(a => a.category === 'headlines').slice(0, 3);
@@ -369,6 +574,7 @@ const PDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
 
   // All remaining items flow across pages
 const flowItems = [
+  ...articles.filter(a => a.isCustomText).map(a => ({ ...a, sTitle: null, category: 'customText' })),
   ...pNews.slice(2).map(a => ({ ...a, sTitle: null, category: 'political' })),    ...cNews.map(a  => ({ ...a, sTitle: 'जंगल राज 2.O',    category: 'civic'    })),
     ...oNews.map(a  => ({ ...a, sTitle: 'विचार मंच',    category: 'opinion'  })),
     ...nNews.map(a  => ({ ...a, sTitle: 'देश की खबरें', category: 'national' })),
@@ -404,27 +610,57 @@ const flowItems = [
       <style dangerouslySetInnerHTML={{ __html: css }} />
 
       {/* ══════════════ PAGE 1 ══════════════ */}
-      <MasterPage pgNum={1} dateDisplay={dateDisplay} showMasthead>
+      <MasterPage pgNum={1} dateDisplay={dateDisplay} showMasthead interactive={interactive}>
 
         {/* Top Headlines */}
         {hNews.length > 0 && (
           <section style={{ marginBottom: '20px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'12px', position: 'relative' }}>
               <span className="party-tag" style={{ background:INK, color:AMBER_400, marginBottom:0 }}>Latest Update</span>
-              <h2 style={{ fontFamily:"'Playfair Display',serif", fontSize:'22px' }}>Top Headlines</h2>
+              {(() => {
+                const off = headingOffsets['Top Headlines'] || { x: 0, y: 0 };
+                return (
+                  <SectionHeading 
+                    sTitle="Top Headlines" 
+                    interactive={interactive} 
+                    onAdjustY={onAdjustY} 
+                    onSetOffset={onSetOffset} 
+                    xOffset={off.x} 
+                    yOffset={off.y} 
+                  />
+                );
+              })()}
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'15px' }}>
               {hNews.map((a, i) => (
-                <div key={i} style={{ background:AMBER_100, border:`1px solid ${AMBER_200}`, borderTop:`4px solid ${AMBER_500}`, borderRadius:'6px', overflow:'hidden', display:'flex', flexDirection:'column' }}>
-                  {a.image && <img src={a.image} style={{ width:'100%', aspectRatio:'16/9', objectFit:'cover' }} crossOrigin="anonymous" alt="" />}
-                  <div style={{ padding:'10px', flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between', paddingTop: a.image ? '10px' : '16px' }}>
-                    <div>
-                      <div style={{ fontSize:'12px', fontWeight:'bold', fontFamily:"'Playfair Display',serif", lineHeight:'1.35', marginBottom:'8px' }}>{a.headline}</div>
-                      {!a.image && a.summary && (
-                        <div style={{ fontSize:'9px', color:SLATE, lineHeight:'1.4', marginBottom:'8px' }}>{a.summary}</div>
-                      )}
+                <div key={i} className={`headline-wrapper ${interactive ? 'interactive-mode' : ''}`}>
+                  <div style={{ background:AMBER_100, border:`1px solid ${AMBER_200}`, borderTop:`4px solid ${AMBER_500}`, borderRadius:'6px', overflow:'hidden', display:'flex', flexDirection:'column', height: '100%' }}>
+                    {a.image && <img src={a.image} style={{ width:'100%', aspectRatio:'16/9', objectFit:'cover' }} crossOrigin="anonymous" alt="" />}
+                    <div style={{ padding:'10px', flex:1, display:'flex', flexDirection:'column', justifyContent:'space-between', paddingTop: a.image ? '10px' : '16px' }}>
+                      <div>
+                        <div 
+                          className={`headline-text ${interactive ? 'editable-text' : ''}`}
+                          style={{ fontSize:'12px', fontWeight:'bold', fontFamily:"'Playfair Display',serif", lineHeight:'1.35', marginBottom:'8px' }}
+                          contentEditable={interactive}
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
+                        >
+                          {a.headline}
+                        </div>
+                        {!a.image && a.summary && (
+                          <div 
+                            className={`summary-text ${interactive ? 'editable-text' : ''}`}
+                            style={{ fontSize:'9px', color:SLATE, lineHeight:'1.4', marginBottom:'8px' }}
+                            contentEditable={interactive}
+                            suppressContentEditableWarning={true}
+                            onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
+                          >
+                            {a.summary}
+                          </div>
+                        )}
+                      </div>
+                      <a href={a.url} style={{ fontSize:'8px', fontWeight:'bold', color:INK, textDecoration:'none', borderBottom:`2px solid ${AMBER_400}`, display:'inline-block' }}>READ MORE →</a>
                     </div>
-                    <a href={a.url} style={{ fontSize:'8px', fontWeight:'bold', color:INK, textDecoration:'none', borderBottom:`2px solid ${AMBER_400}`, display:'inline-block' }}>READ MORE →</a>
                   </div>
                 </div>
               ))}
@@ -443,24 +679,31 @@ const flowItems = [
                 <div style={{ flex:1, height:'1px', background:RULE }} />
               </div>
             )}
-            {pNewsP1.map((a, i) => <NewsCard key={i} article={a} category="political" />)}
+            {pNewsP1.map((a, i) => <NewsCard key={i} article={a} category="political" interactive={interactive} onMove={onMoveArticle} onAdjustY={onAdjustY} onSetOffset={onSetOffset} onUpdateArticle={onUpdateArticle} onRemove={onRemoveArticle} />)}
 
             {/* Extra flow content that fits in remaining P1 space */}
             {p1ExtraSlots.map((slot, i) => {
-              if (slot.type === 'sectionHeading')
-                return <SectionHeading key={i} sTitle={slot.sTitle} />;
+              if (slot.type === 'sectionHeading') {
+                const off = headingOffsets[slot.sTitle] || { x: 0, y: 0 };
+                return <SectionHeading key={i} sTitle={slot.sTitle} interactive={interactive} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={off.x} yOffset={off.y} />;
+              }
               return (
                 <NewsCard
                   key={i}
                   article={slot.article}
                   category={slot.category}
                   isContinuation={slot.type === 'cardContinuation'}
+                  interactive={interactive}
+                  onMove={onMoveArticle}
+                  onAdjustY={onAdjustY}
+                  onUpdateArticle={onUpdateArticle}
+                  onRemove={onRemoveArticle}
                 />
               );
             })}
           </div>
 
-          {p1Tweets.length > 0 && <TweetSidebar tweets={p1Tweets} />}
+          {p1Tweets.length > 0 && <TweetSidebar tweets={p1Tweets} interactive={interactive} onAdjustY={onAdjustY} onUpdateTweetField={onUpdateTweetField} onRemoveTweet={onRemoveTweet} />}
         </div>
 
       </MasterPage>
@@ -475,20 +718,36 @@ const flowItems = [
             <div style={{ display:'grid', gridTemplateColumns: pageTweets.length > 0 ? '2.1fr 0.9fr' : '1fr', gap:'24px' }}>
               <div style={{ flex:1, minWidth:0 }}>
                 {page.slots.map((slot, sIdx) => {
-                  if (slot.type === 'sectionHeading')
-                    return <SectionHeading key={sIdx} sTitle={slot.sTitle} />;
+                  if (slot.type === 'sectionHeading') {
+                    const off = headingOffsets[slot.sTitle] || { x: 0, y: 0 };
+                    return <SectionHeading key={sIdx} sTitle={slot.sTitle} interactive={interactive} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={off.x} yOffset={off.y} />;
+                  }
+                  if (slot.type === 'pageBreak') {
+                    return (
+                      <div key={sIdx} className="page-break-indicator" style={{ borderTop: '2px dashed #10b981', padding: '10px', textAlign: 'center', color: '#10b981', fontSize: '12px', position: 'relative' }}>
+                        --- Page Break ---
+                        {interactive && <button onClick={() => onRemoveArticle(slot.id)} style={{ position: 'absolute', right: 0, top: '-10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer' }}>×</button>}
+                      </div>
+                    );
+                  }
                   return (
                     <NewsCard
                       key={sIdx}
                       article={slot.article}
                       category={slot.category}
                       isContinuation={slot.type === 'cardContinuation'}
+                      interactive={interactive}
+                      onMove={onMoveArticle}
+                      onAdjustY={onAdjustY}
+                      onSetOffset={onSetOffset}
+                      onUpdateArticle={onUpdateArticle}
+                      onRemove={onRemoveArticle}
                     />
                   );
                 })}
               </div>
 
-              {pageTweets.length > 0 && <TweetSidebar tweets={pageTweets} />}
+              {pageTweets.length > 0 && <TweetSidebar tweets={pageTweets} interactive={interactive} onAdjustY={onAdjustY} onSetOffset={onSetOffset} onUpdateTweetField={onUpdateTweetField} onRemoveTweet={onRemoveTweet} />}
             </div>
           </MasterPage>
         );

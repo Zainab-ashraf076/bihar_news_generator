@@ -161,7 +161,13 @@ function allocatePages(flowItems, firstPageAvailableH) {
 
   for (let i = 0; i < flowItems.length; i++) {
     const a = flowItems[i];
-    if (a.sTitle !== prevSTitle) {
+    if (a.isPageBreak) {
+      addSlot({ type: 'pageBreak', id: a.id }, 40);
+      commitPage();
+      prevSTitle = null; // reset section title for new page
+      continue;
+    }
+    if (a.sTitle !== prevSTitle && a.sTitle) {
       prevSTitle = a.sTitle;
       const hH = SECTION_HEADING_H;
       if (remainH < hH + 80) { commitPage(); }
@@ -210,10 +216,101 @@ function allocatePages(flowItems, firstPageAvailableH) {
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-const SectionHeading = ({ sTitle }) => {
-  if (!sTitle) return null;
+const CanvasControl = ({ id, onMove, onAdjustY, onSetOffset, isTweet = false, xOffset = 0, yOffset = 0, onRemove, targetRef }) => {
+  const [isDragging, setIsDragging] = React.useState(false);
+  const startMouse = React.useRef({ x: 0, y: 0 });
+  const startOffset = React.useRef({ x: 0, y: 0 });
+
+  const handleDragStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    startMouse.current = { x: e.clientX, y: e.clientY };
+    startOffset.current = { x: xOffset || 0, y: yOffset || 0 };
+    
+    const onMouseMove = (moveEvent) => {
+      const deltaX = moveEvent.clientX - startMouse.current.x;
+      const deltaY = moveEvent.clientY - startMouse.current.y;
+      const newX = startOffset.current.x + deltaX;
+      const newY = startOffset.current.y + deltaY;
+      
+      // Update DOM directly for 60fps feel
+      if (targetRef && targetRef.current) {
+        targetRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
+        targetRef.current.style.zIndex = '9999';
+      }
+    };
+
+    const onMouseUp = (upEvent) => {
+      const deltaX = upEvent.clientX - startMouse.current.x;
+      const deltaY = upEvent.clientY - startMouse.current.y;
+      
+      setIsDragging(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+      
+      // Finalize state
+      onSetOffset(id, startOffset.current.x + deltaX, startOffset.current.y + deltaY, isTweet);
+      if (targetRef && targetRef.current) {
+        targetRef.current.style.zIndex = '';
+      }
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '15px 0 8px' }}>
+    <div className={`canvas-control ${isDragging ? 'dragging' : ''}`}>
+      <div 
+        className="control-btn drag-handle" 
+        onMouseDown={handleDragStart}
+        style={{ cursor: 'move', background: INK, color: AMBER_400 }}
+        title="Drag to move"
+      >
+        ✥
+      </div>
+      <button className="control-btn" onClick={(e) => { e.stopPropagation(); onMove(id, 'up'); }} title="Move Up">↑</button>
+      <button className="control-btn" onClick={(e) => { e.stopPropagation(); onMove(id, 'down'); }} title="Move Down">↓</button>
+      <div className="offset-control">
+        <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(id, -5, isTweet); }}>-</button>
+        <span>{yOffset}px</span>
+        <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(id, 5, isTweet); }}>+</button>
+      </div>
+      <button className="control-btn" onClick={(e) => { e.stopPropagation(); onRemove(id); }} title="Remove" style={{ color: '#ef4444' }}>×</button>
+    </div>
+  );
+};
+
+const SectionHeading = ({ sTitle, interactive, onAdjustY, onSetOffset, xOffset = 0, yOffset = 0 }) => {
+  if (!sTitle) return null;
+  const headRef = React.useRef(null);
+  return (
+    <div 
+      ref={headRef}
+      className={`section-heading-wrapper ${interactive ? 'interactive-mode' : ''}`}
+      style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '12px', 
+        margin: '15px 0 8px',
+        position: 'relative',
+        transform: `translate(${xOffset}px, ${yOffset}px)`,
+        marginBottom: `${yOffset < 0 ? 15 : (15 + yOffset)}px`
+      }}
+    >
+      {interactive && (
+        <CanvasControl 
+          id={`heading-${sTitle}`} 
+          onMove={() => {}} 
+          onAdjustY={(id, amt) => onAdjustY(sTitle, amt, false, true)} 
+          onSetOffset={(id, x, y) => onSetOffset(sTitle, x, y, false, true)} 
+          xOffset={xOffset} 
+          yOffset={yOffset} 
+          onRemove={() => {}} 
+          targetRef={headRef} 
+        />
+      )}
       <h2 style={{ fontFamily: "'Noto Sans Devanagari','Playfair Display',serif", fontSize: '20px', fontWeight: 700, whiteSpace: 'nowrap' }}>
         {sTitle}
       </h2>
@@ -222,47 +319,150 @@ const SectionHeading = ({ sTitle }) => {
   );
 };
 
-const NewsCard = ({ article: a, category, isContinuation = false }) => (
-  <div className="news-card">
-    <div style={{ display: 'flex', gap: '15px', width: '100%' }}>
-      {category === 'political' && !isContinuation && (
-        <img src={a.customLogo || PARTY_LOGOS[a.party]} className="news-card-logo" crossOrigin="anonymous" alt="" />
-      )}
-      <div className="news-card-body">
-        {category === 'political' && a.party && !isContinuation && (
-          <div className="party-tag">{PARTY_NAMES[a.party] || a.party}</div>
-        )}
-        {isContinuation && <div className="cont-label">↳ {a.headline} (continued)</div>}
-        {!isContinuation && <div className="news-card-h">{a.headline}</div>}
-        <div className="news-card-p">{a.summary}</div>
-        <a href={a.url} className="read-more">Read More →</a>
+const NewsCard = ({ article: a, category, isContinuation = false, interactive, onMove, onAdjustY, onSetOffset, onUpdateArticle, onRemove }) => {
+  const cardRef = React.useRef(null);
+  if (a.isCustomText) {
+    return (
+      <div ref={cardRef} className={`news-card-wrapper ${interactive ? 'interactive-mode' : ''}`} style={{ transform: `translate(${a.xOffset || 0}px, ${a.yOffset || 0}px)`, marginBottom: `${(a.yOffset || 0) < 0 ? 0 : (a.yOffset || 0)}px` }}>
+        {interactive && <CanvasControl id={a.id} onMove={onMove} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={a.xOffset} yOffset={a.yOffset} onRemove={onRemove} targetRef={cardRef} />}
+        <div className="custom-text-box" style={{ padding: '10px', background: 'rgba(251, 191, 36, 0.1)', border: '1px dashed #fbbf24', borderRadius: '4px' }}>
+          <div 
+            className={`news-card-p ${interactive ? 'editable-text' : ''}`}
+            style={{ fontSize: '12px', color: INK, minHeight: '20px' }}
+            contentEditable={interactive}
+            suppressContentEditableWarning={true}
+            onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
+          >
+            {a.headline}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={cardRef} className={`news-card-wrapper ${interactive ? 'interactive-mode' : ''}`} style={{ transform: `translate(${a.xOffset || 0}px, ${a.yOffset || 0}px)`, marginBottom: `${(a.yOffset || 0) < 0 ? 0 : (a.yOffset || 0)}px` }}>
+      {interactive && <CanvasControl id={a.id} onMove={onMove} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={a.xOffset} yOffset={a.yOffset} onRemove={onRemove} targetRef={cardRef} />}
+      <div className="news-card">
+        <div style={{ display: 'flex', gap: '15px', width: '100%' }}>
+          {category === 'political' && !isContinuation && (
+            <img src={a.customLogo || PARTY_LOGOS[a.party]} className="news-card-logo" crossOrigin="anonymous" alt="" />
+          )}
+          <div className="news-card-body">
+            {category === 'political' && a.party && !isContinuation && (
+              <div className="party-tag">{PARTY_NAMES[a.party] || a.party}</div>
+            )}
+            {isContinuation && <div className="cont-label">↳ {a.headline} (continued)</div>}
+            {!isContinuation && (
+              <div 
+                className={`news-card-h ${interactive ? 'editable-text' : ''}`}
+                contentEditable={interactive}
+                suppressContentEditableWarning={true}
+                onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
+              >
+                {a.headline}
+              </div>
+            )}
+            <div 
+              className={`news-card-p ${interactive ? 'editable-text' : ''}`}
+              contentEditable={interactive}
+              suppressContentEditableWarning={true}
+              onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
+            >
+              {a.summary}
+            </div>
+            <a href={a.url} className="read-more">Read More →</a>
+          </div>
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
-const TweetSidebar = ({ tweets, showTitle = true, isFirst = true, isLast = true }) => (
-  <div className="tweet-sidebar" style={{
-    borderTop: isFirst ? `4px solid ${AMBER_400}` : 'none',
-    borderBottom: isLast ? `12px solid ${AMBER_500}` : `4px solid ${AMBER_400}`,
-    borderTopLeftRadius: isFirst ? '10px' : '0',
-    borderTopRightRadius: isFirst ? '10px' : '0',
-    borderBottomLeftRadius: isLast ? '10px' : '0',
-    borderBottomRightRadius: isLast ? '10px' : '0',
-  }}>
-    {showTitle && <div className="sidebar-h">JS Tweets</div>}
-    {tweets.map((t, i) => (
-      <div key={i} className="t-card">
+const TweetCard = ({ t, interactive, onAdjustY, onSetOffset, onUpdateTweetField, onRemoveTweet }) => {
+  const tweetRef = React.useRef(null);
+  return (
+    <div ref={tweetRef} className="tweet-wrapper" style={{ transform: `translate(${t.xOffset || 0}px, ${t.yOffset || 0}px)`, marginBottom: `${(t.yOffset || 0) < 0 ? 0 : (t.yOffset || 0)}px` }}>
+      {interactive && (
+         <div className="canvas-control" style={{ left: 'auto', right: '-10px', top: '0' }}>
+            <div className="offset-control">
+              <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(t.id, -5, true); }}>-</button>
+              <span>{t.yOffset || 0}px</span>
+              <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(t.id, 5, true); }}>+</button>
+            </div>
+            <button className="control-btn" onClick={(e) => { e.stopPropagation(); onRemoveTweet(t.id); }} title="Remove" style={{ color: '#ef4444' }}>×</button>
+            <div 
+              className="control-btn drag-handle" 
+              onMouseDown={(e) => {
+                // Inline simple drag for tweets too
+                e.preventDefault();
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const initialX = t.xOffset || 0;
+                const initialY = t.yOffset || 0;
+                
+                const onMouseMove = (m) => {
+                  const dx = m.clientX - startX;
+                  const dy = m.clientY - startY;
+                  if (tweetRef.current) {
+                    tweetRef.current.style.transform = `translate(${initialX + dx}px, ${initialY + dy}px)`;
+                  }
+                };
+                const onMouseUp = (m) => {
+                  window.removeEventListener('mousemove', onMouseMove);
+                  window.removeEventListener('mouseup', onMouseUp);
+                  onSetOffset(t.id, initialX + (m.clientX - startX), initialY + (m.clientY - startY), true);
+                };
+                window.addEventListener('mousemove', onMouseMove);
+                window.addEventListener('mouseup', onMouseUp);
+              }}
+              style={{ cursor: 'move', background: INK, color: AMBER_400 }}
+            >✥</div>
+         </div>
+      )}
+      <div className="t-card">
         {t.image && <img src={t.image} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }} crossOrigin="anonymous" alt="" />}
-        <span className="t-user">{t.user}</span>
-        <p className="t-text">"{t.text}"</p>
+        <span 
+          className={`t-user ${interactive ? 'editable-text' : ''}`}
+          contentEditable={interactive}
+          suppressContentEditableWarning={true}
+          onBlur={(e) => onUpdateTweetField(t.id, 'user', e.target.innerText)}
+        >
+          {t.user}
+        </span>
+        <p 
+          className={`t-text ${interactive ? 'editable-text' : ''}`}
+          style={{ fontSize: '9px', fontStyle: 'italic' }}
+          contentEditable={interactive}
+          suppressContentEditableWarning={true}
+          onBlur={(e) => onUpdateTweetField(t.id, 'text', e.target.innerText)}
+        >
+          "{t.text}"
+        </p>
       </div>
+    </div>
+  );
+};
+
+const TweetSidebar = ({ tweets, interactive, onAdjustY, onSetOffset, onUpdateTweetField, onRemoveTweet }) => (
+  <div className={`tweet-sidebar ${interactive ? 'interactive-mode' : ''}`}>
+    <div className="sidebar-h">JS Tweets</div>
+    {tweets.map((t, i) => (
+      <TweetCard 
+        key={i} 
+        t={t} 
+        interactive={interactive} 
+        onAdjustY={onAdjustY} 
+        onSetOffset={onSetOffset} 
+        onUpdateTweetField={onUpdateTweetField} 
+        onRemoveTweet={onRemoveTweet} 
+      />
     ))}
   </div>
 );
 
-const MasterPage = ({ children, pgNum, dateDisplay, showMasthead }) => (
-  <div className={`mag-root${pgNum > 1 ? ' page-break' : ''}`}>
+const MasterPage = ({ children, pgNum, dateDisplay, showMasthead, interactive }) => (
+  <div className={`mag-root${pgNum > 1 ? ' page-break' : ''} ${interactive ? 'interactive-page' : ''}`}>
     <div className="tri-tl-outer" /><div className="tri-tl-inner" />
     <div className="tri-br-outer" /><div className="tri-br-inner" />
 
@@ -288,14 +488,20 @@ const MasterPage = ({ children, pgNum, dateDisplay, showMasthead }) => (
   </div>
 );
 
-const JanSuraajPDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
+const JanSuraajPDFTemplate = forwardRef(({ 
+  date, articles, tweets, interactive = false, 
+  onMoveArticle, onAdjustY, onSetOffset, onUpdateTweetField, onRemoveTweet, onAddTweet, onUpdateArticle, onRemoveArticle,
+  headingOffsets = {}
+}, ref) => {
   const dateDisplay = formatDateDisplay(date);
 
-  const hNews = articles.filter(a => a.category === 'headlines').slice(0, 3);
+  const hNews = articles.filter(a => a.category === 'headlines').slice(0, 2);
   const pNews = articles.filter(a => a.category === 'political');
 
   const flowItems = [
+    ...articles.filter(a => a.isCustomText).map(a => ({ ...a, sTitle: null, category: 'customText' })),
     ...pNews.map(a => ({ ...a, sTitle: '  जन सुराज से जुड़ी खबरें', category: 'political' })),
+    ...articles.filter(a => a.category === 'jungleraaj').map(a => ({ ...a, sTitle: '  जंगलराज 2.0', category: 'jungleraaj' })),
   ];
 
   const headlinesH = hNews.length > 0 ? TOP_HEADLINES_H : 0;
@@ -310,52 +516,61 @@ const JanSuraajPDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
   const dynamicPages = useP1Overflow ? allocatedPages.slice(1) : allocatedPages;
 
   const totalPages = 1 + dynamicPages.length;
-  const tweetsPerPage = Math.ceil(tweets.length / totalPages);
-
-  const tweetsByPage = Array.from({ length: totalPages }, (_, i) =>
-    tweets.slice(i * tweetsPerPage, (i + 1) * tweetsPerPage)
-  );
-
-  const p1Tweets = tweetsByPage[0] || [];
+  const p1Tweets = tweets;
+  const tweetsByPage = [tweets];
 
   return (
     <div ref={ref} className="mag-wrapper">
       <style dangerouslySetInnerHTML={{ __html: css }} />
 
-      <MasterPage pgNum={1} dateDisplay={dateDisplay} showMasthead>
-        {/* Top Jan Suraaj News - 1 Full + 2 Half layout */}
+      <MasterPage pgNum={1} dateDisplay={dateDisplay} showMasthead interactive={interactive}>
         {hNews.length > 0 && (
           <section style={{ marginBottom: '20px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+            <div style={{ borderBottom: `2px solid ${INK}`, paddingBottom: '5px', marginBottom: '15px', position: 'relative' }}>
               <span className="party-tag" style={{ background: INK, color: AMBER_400, marginBottom: 0 }}>Jan Suraaj</span>
-              <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: '22px' }}>Top Headlines</h2>
+              {(() => {
+                const off = headingOffsets['Top Headlines'] || { x: 0, y: 0 };
+                return (
+                  <SectionHeading 
+                    sTitle="Top Headlines" 
+                    interactive={interactive} 
+                    onAdjustY={onAdjustY} 
+                    onSetOffset={onSetOffset} 
+                    xOffset={off.x} 
+                    yOffset={off.y} 
+                  />
+                );
+              })()}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {/* Big Featured Card (Full Width) */}
-              {hNews[0] && (
-                <div style={{ background: AMBER_100, border: `1px solid ${AMBER_200}`, borderTop: `4px solid ${AMBER_500}`, borderRadius: '6px', overflow: 'hidden', display: 'flex', minHeight: '200px' }}>
-                  {hNews[0].image && <img src={hNews[0].image} style={{ width: '40%', objectFit: 'cover' }} crossOrigin="anonymous" alt="" />}
-                  <div style={{ padding: '15px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', fontFamily: "'Playfair Display',serif", lineHeight: '1.3', marginBottom: '10px' }}>{hNews[0].headline}</div>
-                    <div style={{ fontSize: '11px', color: SLATE, lineHeight: '1.5', marginBottom: '12px' }}>{hNews[0].summary}</div>
-                    <a href={hNews[0].url} style={{ fontSize: '10px', fontWeight: 'bold', color: INK, textDecoration: 'none', borderBottom: `2px solid ${AMBER_400}`, alignSelf: 'flex-start' }}>READ MORE →</a>
-                  </div>
-                </div>
-              )}
-
-              {/* Two Smaller Cards Below */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                {hNews.slice(1, 3).map((a, i) => (
-                  <div key={i} style={{ background: AMBER_100, border: `1px solid ${AMBER_200}`, borderTop: `4px solid ${AMBER_500}`, borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '15px' }}>
+              {hNews.map((a, i) => (
+                <div key={i} className={`headline-wrapper ${interactive ? 'interactive-mode' : ''}`}>
+                  <div style={{ background: AMBER_100, border: `1px solid ${AMBER_200}`, borderTop: `4px solid ${AMBER_500}`, borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
                     {a.image && <img src={a.image} style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover' }} crossOrigin="anonymous" alt="" />}
-                    <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: "'Playfair Display',serif", lineHeight: '1.35', marginBottom: '8px' }}>{a.headline}</div>
-                      <a href={a.url} style={{ fontSize: '8px', fontWeight: 'bold', color: INK, textDecoration: 'none', borderBottom: `2px solid ${AMBER_400}`, display: 'inline-block' }}>READ MORE →</a>
+                    <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingTop: a.image ? '10px' : '16px' }}>
+                      <div 
+                        className={`news-card-h ${interactive ? 'editable-text' : ''}`}
+                        style={{ fontSize: '13px', lineHeight: '1.4', marginBottom: '8px', color: INK }}
+                        contentEditable={interactive}
+                        suppressContentEditableWarning={true}
+                        onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
+                      >
+                        {a.headline}
+                      </div>
+                      <div 
+                        className={`news-card-p ${interactive ? 'editable-text' : ''}`}
+                        style={{ fontSize: '10px', color: SLATE, height: '42px', overflow: 'hidden' }}
+                        contentEditable={interactive}
+                        suppressContentEditableWarning={true}
+                        onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
+                      >
+                        {a.summary}
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </section>
         )}
@@ -363,17 +578,30 @@ const JanSuraajPDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
         <div style={{ display: 'grid', gridTemplateColumns: p1Tweets.length > 0 ? 'minmax(0, 2.1fr) minmax(0, 0.9fr)' : '1fr', gap: '24px', flex: 1 }}>
           <div style={{ minWidth: 0 }}>
             {p1ExtraSlots.map((slot, i) => {
-              if (slot.type === 'sectionHeading') return <SectionHeading key={i} sTitle={slot.sTitle} />;
-              return <NewsCard key={i} article={slot.article} category={slot.category} isContinuation={slot.type === 'cardContinuation'} />;
+              if (slot.type === 'sectionHeading') {
+                const off = headingOffsets[slot.sTitle] || { x: 0, y: 0 };
+                return <SectionHeading key={i} sTitle={slot.sTitle} interactive={interactive} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={off.x} yOffset={off.y} />;
+              }
+              if (slot.type === 'pageBreak') {
+                return (
+                  <div key={i} className="page-break-indicator" style={{ borderTop: '2px dashed #10b981', padding: '10px', textAlign: 'center', color: '#10b981', fontSize: '12px', position: 'relative' }}>
+                    --- Page Break ---
+                    {interactive && <button onClick={() => onRemoveArticle(slot.id)} style={{ position: 'absolute', right: 0, top: '-10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer' }}>×</button>}
+                  </div>
+                );
+              }
+              return <NewsCard key={i} article={slot.article} category={slot.category} isContinuation={slot.type === 'cardContinuation'} interactive={interactive} onMove={onMoveArticle} onAdjustY={onAdjustY} onSetOffset={onSetOffset} onUpdateArticle={onUpdateArticle} onRemove={onRemoveArticle} />;
             })}
           </div>
           {p1Tweets.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
               <TweetSidebar
                 tweets={p1Tweets}
-                showTitle={true}
-                isFirst={true}
-                isLast={tweetsByPage.length <= 1 || tweetsByPage.slice(1).every(p => p.length === 0)}
+                interactive={interactive}
+                onAdjustY={onAdjustY}
+                onSetOffset={onSetOffset}
+                onUpdateTweetField={onUpdateTweetField}
+                onRemoveTweet={onRemoveTweet}
               />
             </div>
           )}
@@ -384,21 +612,34 @@ const JanSuraajPDFTemplate = forwardRef(({ date, articles, tweets }, ref) => {
         const pgNum = pIdx + 2;
         const pageTweets = tweetsByPage[pgNum - 1] || [];
         return (
-          <MasterPage key={pgNum} pgNum={pgNum} dateDisplay={dateDisplay} showMasthead={false}>
+          <MasterPage key={pgNum} pgNum={pgNum} dateDisplay={dateDisplay} showMasthead={false} interactive={interactive}>
             <div style={{ display: 'grid', gridTemplateColumns: pageTweets.length > 0 ? 'minmax(0, 2.1fr) minmax(0, 0.9fr)' : '1fr', gap: '24px', flex: 1 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 {page.slots.map((slot, sIdx) => {
-                  if (slot.type === 'sectionHeading') return <SectionHeading key={sIdx} sTitle={slot.sTitle} />;
-                  return <NewsCard key={sIdx} article={slot.article} category={slot.category} isContinuation={slot.type === 'cardContinuation'} />;
+                  if (slot.type === 'sectionHeading') {
+                    const off = headingOffsets[slot.sTitle] || { x: 0, y: 0 };
+                    return <SectionHeading key={sIdx} sTitle={slot.sTitle} interactive={interactive} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={off.x} yOffset={off.y} />;
+                  }
+                  if (slot.type === 'pageBreak') {
+                    return (
+                      <div key={sIdx} className="page-break-indicator" style={{ borderTop: '2px dashed #10b981', padding: '10px', textAlign: 'center', color: '#10b981', fontSize: '12px', position: 'relative' }}>
+                        --- Page Break ---
+                        {interactive && <button onClick={() => onRemoveArticle(slot.id)} style={{ position: 'absolute', right: 0, top: '-10px', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer' }}>×</button>}
+                      </div>
+                    );
+                  }
+                  return <NewsCard key={sIdx} article={slot.article} category={slot.category} isContinuation={slot.type === 'cardContinuation'} interactive={interactive} onMove={onMoveArticle} onAdjustY={onAdjustY} onSetOffset={onSetOffset} onUpdateArticle={onUpdateArticle} onRemove={onRemoveArticle} />;
                 })}
               </div>
               {pageTweets.length > 0 && (
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <TweetSidebar
                     tweets={pageTweets}
-                    showTitle={false}
-                    isFirst={false}
-                    isLast={pIdx === dynamicPages.length - 1 || (tweetsByPage[pgNum]?.length === 0)}
+                    interactive={interactive}
+                    onAdjustY={onAdjustY}
+                    onSetOffset={onSetOffset}
+                    onUpdateTweetField={onUpdateTweetField}
+                    onRemoveTweet={onRemoveTweet}
                   />
                 </div>
               )}
