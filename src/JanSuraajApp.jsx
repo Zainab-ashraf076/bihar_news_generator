@@ -19,7 +19,7 @@ const SECTION_LOGOS = {
   'international': new URL('/international.jpeg', window.location.origin).href,
   'opinion': new URL('/opinion.jpeg', window.location.origin).href,
   'civic': new URL('/civic.jpeg', window.location.origin).href,
-  'jungleraaj': new URL('/civic.jpeg', window.location.origin).href, 
+  'jungleraaj': new URL('/civic.jpeg', window.location.origin).href,
 };
 
 const TRENDING_TWEETS = [
@@ -34,7 +34,7 @@ const SECTION_META = {
 function JanSuraajApp() {
   const navigate = useNavigate();
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  
+
   // Persistence logic
   const [articles, setArticles] = useState(() => {
     const saved = localStorage.getItem('js-scan-articles');
@@ -231,9 +231,9 @@ function JanSuraajApp() {
                     <div style={{ fontWeight: '800', fontSize: '14px', color: '#f59e0b' }}>Jan Suraaj </div>
                   </div>
                 )}
-                 {category === 'jungleraaj' && (
-                   <img src={SECTION_LOGOS[category]} alt={category} crossOrigin="anonymous" style={{ width: 70, height: 70, objectFit: 'contain' }} />
-                 )}
+                {category === 'jungleraaj' && (
+                  <img src={SECTION_LOGOS[category]} alt={category} crossOrigin="anonymous" style={{ width: 70, height: 70, objectFit: 'contain' }} />
+                )}
                 <button className="btn-del" onClick={() => removeArticle(art.id)}>×</button>
               </div>
 

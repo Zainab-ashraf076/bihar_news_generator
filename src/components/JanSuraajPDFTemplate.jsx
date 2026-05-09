@@ -241,13 +241,13 @@ const CanvasControl = ({ id, onMove, onAdjustY, onSetOffset, isTweet = false, xO
     setIsDragging(true);
     startMouse.current = { x: e.clientX, y: e.clientY };
     startOffset.current = { x: xOffset || 0, y: yOffset || 0 };
-    
+
     const onMouseMove = (moveEvent) => {
       const deltaX = moveEvent.clientX - startMouse.current.x;
       const deltaY = moveEvent.clientY - startMouse.current.y;
       const newX = startOffset.current.x + deltaX;
       const newY = startOffset.current.y + deltaY;
-      
+
       // Update DOM directly for 60fps feel
       if (targetRef && targetRef.current) {
         targetRef.current.style.transform = `translate(${newX}px, ${newY}px)`;
@@ -258,11 +258,11 @@ const CanvasControl = ({ id, onMove, onAdjustY, onSetOffset, isTweet = false, xO
     const onMouseUp = (upEvent) => {
       const deltaX = upEvent.clientX - startMouse.current.x;
       const deltaY = upEvent.clientY - startMouse.current.y;
-      
+
       setIsDragging(false);
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
-      
+
       // Finalize state
       onSetOffset(id, startOffset.current.x + deltaX, startOffset.current.y + deltaY, isTweet);
       if (targetRef && targetRef.current) {
@@ -276,8 +276,8 @@ const CanvasControl = ({ id, onMove, onAdjustY, onSetOffset, isTweet = false, xO
 
   return (
     <div className={`canvas-control ${isDragging ? 'dragging' : ''}`}>
-      <div 
-        className="control-btn drag-handle" 
+      <div
+        className="control-btn drag-handle"
         onMouseDown={handleDragStart}
         style={{ cursor: 'move', background: INK, color: AMBER_400 }}
         title="Drag to move"
@@ -300,13 +300,13 @@ const SectionHeading = ({ sTitle, interactive, onAdjustY, onSetOffset, xOffset =
   if (!sTitle) return null;
   const headRef = React.useRef(null);
   return (
-    <div 
+    <div
       ref={headRef}
       className={`section-heading-wrapper ${interactive ? 'interactive-mode' : ''}`}
-      style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: '12px', 
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
         margin: '15px 0 8px',
         position: 'relative',
         transform: `translate(${xOffset}px, ${yOffset}px)`,
@@ -314,15 +314,15 @@ const SectionHeading = ({ sTitle, interactive, onAdjustY, onSetOffset, xOffset =
       }}
     >
       {interactive && (
-        <CanvasControl 
-          id={`heading-${sTitle}`} 
-          onMove={() => {}} 
-          onAdjustY={(id, amt) => onAdjustY(sTitle, amt, false, true)} 
-          onSetOffset={(id, x, y) => onSetOffset(sTitle, x, y, false, true)} 
-          xOffset={xOffset} 
-          yOffset={yOffset} 
-          onRemove={() => {}} 
-          targetRef={headRef} 
+        <CanvasControl
+          id={`heading-${sTitle}`}
+          onMove={() => { }}
+          onAdjustY={(id, amt) => onAdjustY(sTitle, amt, false, true)}
+          onSetOffset={(id, x, y) => onSetOffset(sTitle, x, y, false, true)}
+          xOffset={xOffset}
+          yOffset={yOffset}
+          onRemove={() => { }}
+          targetRef={headRef}
         />
       )}
       <h2 style={{ fontFamily: "'Noto Sans Devanagari','Playfair Display',serif", fontSize: '20px', fontWeight: 700, whiteSpace: 'nowrap' }}>
@@ -340,7 +340,7 @@ const NewsCard = ({ article: a, category, isContinuation = false, interactive, o
       <div ref={cardRef} className={`news-card-wrapper ${interactive ? 'interactive-mode' : ''}`} style={{ transform: `translate(${a.xOffset || 0}px, ${a.yOffset || 0}px)`, marginBottom: `${(a.yOffset || 0) < 0 ? 0 : (a.yOffset || 0)}px` }}>
         {interactive && <CanvasControl id={a.id} onMove={onMove} onAdjustY={onAdjustY} onSetOffset={onSetOffset} xOffset={a.xOffset} yOffset={a.yOffset} onRemove={onRemove} targetRef={cardRef} />}
         <div className="custom-text-box" style={{ padding: '10px', background: 'rgba(251, 191, 36, 0.1)', border: '1px dashed #fbbf24', borderRadius: '4px' }}>
-          <div 
+          <div
             className={`news-card-p ${interactive ? 'editable-text' : ''}`}
             style={{ fontSize: '12px', color: INK, minHeight: '20px' }}
             contentEditable={interactive}
@@ -370,7 +370,7 @@ const NewsCard = ({ article: a, category, isContinuation = false, interactive, o
               <div className="cont-headline">{a.headline}</div>
             )}
             {!isContinuation && (
-              <div 
+              <div
                 className={`news-card-h ${interactive ? 'editable-text' : ''}`}
                 contentEditable={interactive}
                 suppressContentEditableWarning={true}
@@ -379,7 +379,7 @@ const NewsCard = ({ article: a, category, isContinuation = false, interactive, o
                 {a.headline}
               </div>
             )}
-            <div 
+            <div
               className={`news-card-p ${interactive ? 'editable-text' : ''}`}
               contentEditable={interactive}
               suppressContentEditableWarning={true}
@@ -400,45 +400,45 @@ const TweetCard = ({ t, interactive, onAdjustY, onSetOffset, onUpdateTweetField,
   return (
     <div ref={tweetRef} className="tweet-wrapper" style={{ transform: `translate(${t.xOffset || 0}px, ${t.yOffset || 0}px)`, marginBottom: `${(t.yOffset || 0) < 0 ? 0 : (t.yOffset || 0)}px` }}>
       {interactive && (
-         <div className="canvas-control" style={{ left: 'auto', right: '-10px', top: '0' }}>
-            <div className="offset-control">
-              <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(t.id, -5, true); }}>-</button>
-              <span>{t.yOffset || 0}px</span>
-              <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(t.id, 5, true); }}>+</button>
-            </div>
-            <button className="control-btn" onClick={(e) => { e.stopPropagation(); onRemoveTweet(t.id); }} title="Remove" style={{ color: '#ef4444' }}>×</button>
-            <div 
-              className="control-btn drag-handle" 
-              onMouseDown={(e) => {
-                // Inline simple drag for tweets too
-                e.preventDefault();
-                const startX = e.clientX;
-                const startY = e.clientY;
-                const initialX = t.xOffset || 0;
-                const initialY = t.yOffset || 0;
-                
-                const onMouseMove = (m) => {
-                  const dx = m.clientX - startX;
-                  const dy = m.clientY - startY;
-                  if (tweetRef.current) {
-                    tweetRef.current.style.transform = `translate(${initialX + dx}px, ${initialY + dy}px)`;
-                  }
-                };
-                const onMouseUp = (m) => {
-                  window.removeEventListener('mousemove', onMouseMove);
-                  window.removeEventListener('mouseup', onMouseUp);
-                  onSetOffset(t.id, initialX + (m.clientX - startX), initialY + (m.clientY - startY), true);
-                };
-                window.addEventListener('mousemove', onMouseMove);
-                window.addEventListener('mouseup', onMouseUp);
-              }}
-              style={{ cursor: 'move', background: INK, color: AMBER_400 }}
-            >✥</div>
-         </div>
+        <div className="canvas-control" style={{ left: 'auto', right: '-10px', top: '0' }}>
+          <div className="offset-control">
+            <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(t.id, -5, true); }}>-</button>
+            <span>{t.yOffset || 0}px</span>
+            <button className="offset-btn" onClick={(e) => { e.stopPropagation(); onAdjustY(t.id, 5, true); }}>+</button>
+          </div>
+          <button className="control-btn" onClick={(e) => { e.stopPropagation(); onRemoveTweet(t.id); }} title="Remove" style={{ color: '#ef4444' }}>×</button>
+          <div
+            className="control-btn drag-handle"
+            onMouseDown={(e) => {
+              // Inline simple drag for tweets too
+              e.preventDefault();
+              const startX = e.clientX;
+              const startY = e.clientY;
+              const initialX = t.xOffset || 0;
+              const initialY = t.yOffset || 0;
+
+              const onMouseMove = (m) => {
+                const dx = m.clientX - startX;
+                const dy = m.clientY - startY;
+                if (tweetRef.current) {
+                  tweetRef.current.style.transform = `translate(${initialX + dx}px, ${initialY + dy}px)`;
+                }
+              };
+              const onMouseUp = (m) => {
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+                onSetOffset(t.id, initialX + (m.clientX - startX), initialY + (m.clientY - startY), true);
+              };
+              window.addEventListener('mousemove', onMouseMove);
+              window.addEventListener('mouseup', onMouseUp);
+            }}
+            style={{ cursor: 'move', background: INK, color: AMBER_400 }}
+          >✥</div>
+        </div>
       )}
       <div className="t-card">
         {t.image && <img src={t.image} style={{ width: '100%', height: 60, objectFit: 'cover', borderRadius: 4, marginBottom: 8 }} crossOrigin="anonymous" alt="" />}
-        <span 
+        <span
           className={`t-user ${interactive ? 'editable-text' : ''}`}
           contentEditable={interactive}
           suppressContentEditableWarning={true}
@@ -446,7 +446,7 @@ const TweetCard = ({ t, interactive, onAdjustY, onSetOffset, onUpdateTweetField,
         >
           {t.user}
         </span>
-        <p 
+        <p
           className={`t-text ${interactive ? 'editable-text' : ''}`}
           style={{ fontSize: '9px', fontStyle: 'italic' }}
           contentEditable={interactive}
@@ -464,14 +464,14 @@ const TweetSidebar = ({ tweets, interactive, onAdjustY, onSetOffset, onUpdateTwe
   <div className={`tweet-sidebar ${interactive ? 'interactive-mode' : ''}`}>
     <div className="sidebar-h">JS Tweets</div>
     {tweets.map((t, i) => (
-      <TweetCard 
-        key={i} 
-        t={t} 
-        interactive={interactive} 
-        onAdjustY={onAdjustY} 
-        onSetOffset={onSetOffset} 
-        onUpdateTweetField={onUpdateTweetField} 
-        onRemoveTweet={onRemoveTweet} 
+      <TweetCard
+        key={i}
+        t={t}
+        interactive={interactive}
+        onAdjustY={onAdjustY}
+        onSetOffset={onSetOffset}
+        onUpdateTweetField={onUpdateTweetField}
+        onRemoveTweet={onRemoveTweet}
       />
     ))}
   </div>
@@ -485,16 +485,16 @@ const MasterPage = ({ children, pgNum, dateDisplay, showMasthead, interactive })
     <div className="mag-page" style={{ paddingTop: showMasthead ? `${PAGE_TOP_MASTHEAD}px` : `${PAGE_TOP_NORMAL}px` }}>
       {showMasthead && (
         <>
-          <div className="masthead-title">Jan Suraaj <span>News</span></div>
+          <div className="masthead-title">Jan Suraaj <span>ki Baat</span></div>
           <div className="meta-bar"><span className="meta-date">{dateDisplay}</span></div>
-          <div className="ribbon-banner"><span className="ribbon-text">जन सुराज समाचार</span></div>
+          <div className="ribbon-banner"><span className="ribbon-text">जन सुराज की बात!</span></div>
         </>
       )}
       {children}
     </div>
 
     <footer className="mag-footer">
-      <div className="f-brand">Jan Suraaj News</div>
+      <div className="f-brand">Jan Suraaj ki Baat</div>
       <div className="f-meta">
         Bihar's Leading Journal • {dateDisplay} •
         <a href="https://www.jansuraaj.org" target="_blank" rel="noopener noreferrer" style={{ color: INK, textDecoration: 'underline', marginLeft: '5px' }}>www.jansuraaj.org</a>
@@ -504,8 +504,8 @@ const MasterPage = ({ children, pgNum, dateDisplay, showMasthead, interactive })
   </div>
 );
 
-const JanSuraajPDFTemplate = forwardRef(({ 
-  date, articles, tweets, interactive = false, 
+const JanSuraajPDFTemplate = forwardRef(({
+  date, articles, tweets, interactive = false,
   onMoveArticle, onAdjustY, onSetOffset, onUpdateTweetField, onRemoveTweet, onAddTweet, onUpdateArticle, onRemoveArticle,
   headingOffsets = {}
 }, ref) => {
@@ -538,7 +538,7 @@ const JanSuraajPDFTemplate = forwardRef(({
     let maxP1Tweets = Math.floor((p1Available - 90) / 45);
     if (maxP1Tweets < 0) maxP1Tweets = 0;
     if (maxP1Tweets > TWEETS_PER_PAGE) maxP1Tweets = TWEETS_PER_PAGE;
-    
+
     p1Tweets = tweets.slice(0, maxP1Tweets);
     dynamicTweets = tweets.slice(maxP1Tweets);
   } else {
@@ -566,13 +566,13 @@ const JanSuraajPDFTemplate = forwardRef(({
               {(() => {
                 const off = headingOffsets['Top Headlines'] || { x: 0, y: 0 };
                 return (
-                  <SectionHeading 
-                    sTitle="Top Headlines" 
-                    interactive={interactive} 
-                    onAdjustY={onAdjustY} 
-                    onSetOffset={onSetOffset} 
-                    xOffset={off.x} 
-                    yOffset={off.y} 
+                  <SectionHeading
+                    sTitle="Top Headlines"
+                    interactive={interactive}
+                    onAdjustY={onAdjustY}
+                    onSetOffset={onSetOffset}
+                    xOffset={off.x}
+                    yOffset={off.y}
                   />
                 );
               })()}
@@ -585,9 +585,9 @@ const JanSuraajPDFTemplate = forwardRef(({
                     {a.image && <img src={a.image} style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover' }} crossOrigin="anonymous" alt="" />}
                     <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingTop: a.image ? '10px' : '16px' }}>
                       <div>
-                        <div 
+                        <div
                           className={`headline-text ${interactive ? 'editable-text' : ''}`}
-                          style={{ fontSize:'12px', fontWeight:'bold', fontFamily:"'Playfair Display',serif", lineHeight:'1.35', marginBottom:'8px', wordBreak: 'break-word' }}
+                          style={{ fontSize: '12px', fontWeight: 'bold', fontFamily: "'Playfair Display',serif", lineHeight: '1.35', marginBottom: '8px', wordBreak: 'break-word' }}
                           contentEditable={interactive}
                           suppressContentEditableWarning={true}
                           onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
@@ -595,9 +595,9 @@ const JanSuraajPDFTemplate = forwardRef(({
                           {a.headline}
                         </div>
                         {!a.image && a.summary && (
-                          <div 
+                          <div
                             className={`summary-text ${interactive ? 'editable-text' : ''}`}
-                            style={{ fontSize:'10px', color:SLATE, wordBreak: 'break-word' }}
+                            style={{ fontSize: '10px', color: SLATE, wordBreak: 'break-word' }}
                             contentEditable={interactive}
                             suppressContentEditableWarning={true}
                             onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
@@ -606,7 +606,7 @@ const JanSuraajPDFTemplate = forwardRef(({
                           </div>
                         )}
                       </div>
-                      <a href={a.url} style={{ fontSize:'8px', fontWeight:'bold', color:INK, textDecoration:'none', borderBottom:`2px solid ${AMBER_400}`, display:'inline-block' }}>READ MORE →</a>
+                      <a href={a.url} style={{ fontSize: '8px', fontWeight: 'bold', color: INK, textDecoration: 'none', borderBottom: `2px solid ${AMBER_400}`, display: 'inline-block' }}>READ MORE →</a>
                     </div>
                   </div>
                 </div>
