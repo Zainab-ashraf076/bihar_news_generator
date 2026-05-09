@@ -56,7 +56,7 @@ const SECTION_HEADING_H = 68;   // section icon + text + margin
 // Text layout constants
 const HEADLINE_LINE_H = 25.65;  // 19px * 1.35
 const SUMMARY_LINE_H = 17.6;   // 11px * 1.6
-const TWEETS_PER_PAGE = 6;
+const TWEETS_PER_PAGE = 4;
 const CHARS_PER_LINE = 88;     // approx chars per summary line at full width
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
@@ -108,11 +108,11 @@ const css = `
   .cont-label { font-size:9px; color:${SLATE}; font-style:italic; margin-bottom:4px; }
   .cont-headline { font-size:13px; font-weight:700; font-family:'Playfair Display',serif; color:${INK}; margin-bottom:6px; line-height:1.35; word-break: break-word; }
 
-  .tweet-sidebar { background:#fff; border:4px solid ${AMBER_400}; padding:15px; border-radius:10px; box-shadow:4px 4px 0px ${AMBER_200}; overflow:hidden; display: flex; flex-direction: column; width: 100%; max-height: 100%; margin-bottom: 20px; }
-  .sidebar-h { font-family:'Playfair Display',serif; font-size:16px; font-weight:900; border-bottom:3px solid ${AMBER_400}; padding-bottom:6px; margin-bottom:12px; text-transform:uppercase; text-align:center; }
-  .t-card { margin-bottom:12px; border-bottom:1px dashed ${AMBER_200}; padding-bottom:10px; width: 100%; }
+  .tweet-sidebar { background:#fff; border:2px solid ${AMBER_300}; padding:15px; border-radius:10px; box-shadow:4px 4px 0px ${AMBER_200}; overflow:hidden; display: flex; flex-direction: column; width: 100%; max-height: 100%; }
+  .sidebar-h { font-family:'Playfair Display',serif; font-size:16px; font-weight:900; border-bottom:3px solid ${AMBER_400}; padding-bottom:6px; margin-bottom:12px; text-transform:uppercase; text-align:center; white-space: nowrap; }
+  .t-card { margin-bottom:12px; border-bottom:1px dashed ${AMBER_200}; padding-bottom:10px; }
   .t-user { font-family:'Outfit',sans-serif; font-size:9px; font-weight:800; color:${AMBER_500}; display:block; }
-  .t-text { fontSize:9px; fontStyle:italic; word-break: break-all; width: 100%; }
+  .t-text { font-size:9px; font-style:italic; }
 
   .mag-footer { position:absolute; bottom:0; left:0; width:100%; border-top:4px solid ${INK}; padding:12px ${PAGE_SIDE_PAD}px; background:${AMBER_400}; display:flex; align-items:center; justify-content:space-between; z-index:20; height:${FOOTER_HEIGHT}px; }
   .f-brand { font-family:'Playfair Display',serif; font-size:17px; font-weight:900; }
@@ -220,7 +220,7 @@ function allocatePages(flowItems, firstPageAvailableH) {
     if (splitAt === 0) splitAt = charsAvail;
     const part1Summary = summary.slice(0, splitAt).trimEnd() + '…';
     const part2Summary = '…' + summary.slice(splitAt).trimStart();
-    addSlot({ type: 'card', article: { ...a, summary: part1Summary }, category: a.category, isSplitStart: true }, remainH);
+    addSlot({ type: 'card', article: { ...a, summary: part1Summary, isSplitStart: true }, category: a.category }, remainH);
     commitPage();
     const contH = estimateCardHeight({ ...a, summary: part2Summary }, a.category, true);
     addSlot({ type: 'cardContinuation', article: { ...a, summary: part2Summary }, category: a.category }, Math.min(contH, remainH));
@@ -366,7 +366,9 @@ const NewsCard = ({ article: a, category, isContinuation = false, interactive, o
             {category === 'political' && a.party && !isContinuation && (
               <div className="party-tag">{PARTY_NAMES[a.party] || a.party}</div>
             )}
-            {isContinuation && <div className="cont-label">↳ {a.headline} (continued)</div>}
+            {isContinuation && (
+              <div className="cont-headline">{a.headline}</div>
+            )}
             {!isContinuation && (
               <div 
                 className={`news-card-h ${interactive ? 'editable-text' : ''}`}
@@ -385,7 +387,7 @@ const NewsCard = ({ article: a, category, isContinuation = false, interactive, o
             >
               {a.summary}
             </div>
-            <a href={a.url} className="read-more">Read More →</a>
+            {!a.isSplitStart && <a href={a.url} className="read-more">Read More →</a>}
           </div>
         </div>
       </div>
@@ -529,7 +531,7 @@ const JanSuraajPDFTemplate = forwardRef(({
   const p1ExtraSlots = useP1Overflow ? (allocatedPages[0]?.slots || []) : [];
   const dynamicPages = useP1Overflow ? allocatedPages.slice(1) : allocatedPages;
 
-  const TWEETS_PER_PAGE = 6;
+  const TWEETS_PER_PAGE = 4;
   let p1Tweets = [];
   let dynamicTweets = [];
   if (useP1Overflow) {
@@ -582,24 +584,29 @@ const JanSuraajPDFTemplate = forwardRef(({
                   <div style={{ background: AMBER_100, border: `1px solid ${AMBER_200}`, borderTop: `4px solid ${AMBER_500}`, borderRadius: '6px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
                     {a.image && <img src={a.image} style={{ width: '100%', aspectRatio: '16/9', objectFit: 'cover' }} crossOrigin="anonymous" alt="" />}
                     <div style={{ padding: '10px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', paddingTop: a.image ? '10px' : '16px' }}>
-                      <div 
-                        className={`news-card-h ${interactive ? 'editable-text' : ''}`}
-                        style={{ fontSize: '13px', lineHeight: '1.4', marginBottom: '8px', color: INK, wordBreak: 'break-word' }}
-                        contentEditable={interactive}
-                        suppressContentEditableWarning={true}
-                        onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
-                      >
-                        {a.headline}
+                      <div>
+                        <div 
+                          className={`headline-text ${interactive ? 'editable-text' : ''}`}
+                          style={{ fontSize:'12px', fontWeight:'bold', fontFamily:"'Playfair Display',serif", lineHeight:'1.35', marginBottom:'8px', wordBreak: 'break-word' }}
+                          contentEditable={interactive}
+                          suppressContentEditableWarning={true}
+                          onBlur={(e) => onUpdateArticle(a.id, 'headline', e.target.innerText)}
+                        >
+                          {a.headline}
+                        </div>
+                        {!a.image && a.summary && (
+                          <div 
+                            className={`summary-text ${interactive ? 'editable-text' : ''}`}
+                            style={{ fontSize:'10px', color:SLATE, wordBreak: 'break-word' }}
+                            contentEditable={interactive}
+                            suppressContentEditableWarning={true}
+                            onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
+                          >
+                            {a.summary}
+                          </div>
+                        )}
                       </div>
-                      <div 
-                        className={`news-card-p ${interactive ? 'editable-text' : ''}`}
-                        style={{ fontSize: '10px', color: SLATE, height: '42px', overflow: 'hidden', wordBreak: 'break-word' }}
-                        contentEditable={interactive}
-                        suppressContentEditableWarning={true}
-                        onBlur={(e) => onUpdateArticle(a.id, 'summary', e.target.innerText)}
-                      >
-                        {a.summary}
-                      </div>
+                      <a href={a.url} style={{ fontSize:'8px', fontWeight:'bold', color:INK, textDecoration:'none', borderBottom:`2px solid ${AMBER_400}`, display:'inline-block' }}>READ MORE →</a>
                     </div>
                   </div>
                 </div>

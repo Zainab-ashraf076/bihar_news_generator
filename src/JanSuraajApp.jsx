@@ -392,7 +392,7 @@ function JanSuraajApp() {
         <aside className="trending-sidebar">
           <div className="sidebar-header">
             <div className="trending-dot" style={{ background: '#f59e0b' }} />
-            <h4>JS Tweets Trend</h4>
+            <h4>JS Tweets</h4>
             <button
               className="btn-add"
               onClick={addTweet}

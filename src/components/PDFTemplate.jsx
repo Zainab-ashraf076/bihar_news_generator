@@ -251,10 +251,7 @@ function allocatePages(flowItems, firstPageAvailableH) {
     const part2Summary = '…' + summary.slice(splitAt).trimStart();
 
     // Part 1 on current page
-    addSlot(
-      { type: 'card', article: { ...a, summary: part1Summary }, category: a.category, isSplitStart: true },
-      remainH  // fills remaining space on this page
-    );
+    addSlot({ type: 'card', article: { ...a, summary: part1Summary, isSplitStart: true }, category: a.category }, remainH);
 
     commitPage();
 
@@ -418,9 +415,9 @@ const NewsCard = ({ article: a, category, isContinuation = false, interactive, o
                 {PARTY_NAMES[a.party] || a.party}
               </div>
             )}
-            {/* Continuation label */}
+            {/* Continuation — show small headline only */}
             {isContinuation && (
-              <div className="cont-label">↳ {a.headline} (continued)</div>
+              <div className="cont-headline">{a.headline}</div>
             )}
             {/* Headline — fresh cards only */}
             {!isContinuation && (
@@ -441,7 +438,7 @@ const NewsCard = ({ article: a, category, isContinuation = false, interactive, o
             >
               {a.summary}
             </div>
-            <a href={a.url} className="read-more">Read More →</a>
+            {!a.isSplitStart && <a href={a.url} className="read-more">Read More →</a>}
           </div>
         </div>
       </div>
