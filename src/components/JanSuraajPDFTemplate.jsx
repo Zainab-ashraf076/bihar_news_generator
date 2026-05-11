@@ -485,7 +485,7 @@ const MasterPage = ({ children, pgNum, dateDisplay, showMasthead, interactive })
     <div className="mag-page" style={{ paddingTop: showMasthead ? `${PAGE_TOP_MASTHEAD}px` : `${PAGE_TOP_NORMAL}px` }}>
       {showMasthead && (
         <>
-          <div className="masthead-title">Jan Suraaj <span>ki Baat</span></div>
+          <div className="masthead-title">Jan Suraaj <span>News</span></div>
           <div className="meta-bar"><span className="meta-date">{dateDisplay}</span></div>
           <div className="ribbon-banner"><span className="ribbon-text">जन सुराज की बात!</span></div>
         </>
